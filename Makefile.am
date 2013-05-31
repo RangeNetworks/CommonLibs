@@ -1,5 +1,6 @@
 #
 # Copyright 2008, 2009 Free Software Foundation, Inc.
+# Copyright 2011, 2012 Range Networks, Inc.
 #
 # This software is distributed under the terms of the GNU Public License.
 # See the COPYING file in the main directory for details.
@@ -21,7 +22,7 @@
 include $(top_srcdir)/Makefile.common
 
 AM_CPPFLAGS = $(STD_DEFINES_AND_INCLUDES)
-AM_CXXFLAGS = -Wall -O3 -g -lpthread
+AM_CXXFLAGS = -Wall -O3 -g -ldl -lpthread
 
 EXTRA_DIST = \
 	example.config \
@@ -35,8 +36,12 @@ libcommon_la_SOURCES = \
 	Sockets.cpp \
 	Threads.cpp \
 	Timeval.cpp \
+	Reporting.cpp \
 	Logger.cpp \
-	Configuration.cpp
+	Configuration.cpp \
+	sqlite3util.cpp \
+	URLEncode.cpp \
+	Utils.cpp
 
 noinst_PROGRAMS = \
 	BitVectorTest \
@@ -47,7 +52,10 @@ noinst_PROGRAMS = \
 	VectorTest \
 	ConfigurationTest \
 	LogTest \
+	URLEncodeTest \
 	F16Test
+
+#	ReportingTest 
 
 noinst_HEADERS = \
 	BitVector.h \
@@ -59,11 +67,18 @@ noinst_HEADERS = \
 	Regexp.h \
 	Vector.h \
 	Configuration.h \
+	Reporting.h \
 	F16.h \
-	Logger.h
+	URLEncode.h \
+	Utils.h \
+	Logger.h \
+	sqlite3util.h
+
+URLEncodeTest_SOURCES = URLEncodeTest.cpp
+URLEncodeTest_LDADD = libcommon.la
 
 BitVectorTest_SOURCES = BitVectorTest.cpp
-BitVectorTest_LDADD = libcommon.la
+BitVectorTest_LDADD = libcommon.la $(SQLITE_LA)
 
 InterthreadTest_SOURCES = InterthreadTest.cpp
 InterthreadTest_LDADD = libcommon.la
@@ -77,13 +92,16 @@ TimevalTest_SOURCES = TimevalTest.cpp
 TimevalTest_LDADD = libcommon.la
 
 VectorTest_SOURCES = VectorTest.cpp
-VectorTest_LDADD = libcommon.la
+VectorTest_LDADD = libcommon.la $(SQLITE_LA)
 
 RegexpTest_SOURCES = RegexpTest.cpp
 RegexpTest_LDADD = libcommon.la
 
 ConfigurationTest_SOURCES = ConfigurationTest.cpp
 ConfigurationTest_LDADD = libcommon.la 	$(SQLITE_LA)
+
+# ReportingTest_SOURCES = ReportingTest.cpp
+# ReportingTest_LDADD = libcommon.la $(SQLITE_LA)
 
 LogTest_SOURCES = LogTest.cpp
 LogTest_LDADD = libcommon.la $(SQLITE_LA)

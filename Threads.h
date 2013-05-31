@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include <iostream>
 #include <assert.h>
+#include <unistd.h>
 
 class Mutex;
 
@@ -79,6 +80,8 @@ class Mutex {
 	~Mutex();
 
 	void lock() { pthread_mutex_lock(&mMutex); }
+
+	bool trylock() { return pthread_mutex_trylock(&mMutex)==0; }
 
 	void unlock() { pthread_mutex_unlock(&mMutex); }
 
@@ -152,12 +155,16 @@ class Thread {
 	public:
 
 	/** Create a thread in a non-running state. */
-	Thread(size_t wStackSize = (65536*4)):mThread((pthread_t)0) { mStackSize=wStackSize;}
+	Thread(size_t wStackSize = (65536*4)):mThread((pthread_t)0) {
+		pthread_attr_init(&mAttrib);	// (pat) moved this here.
+		mStackSize=wStackSize;
+	}
 
 	/**
 		Destroy the Thread.
 		It should be stopped and joined.
 	*/
+	// (pat) If the Thread is destroyed without being started, then mAttrib is undefined.  Oops.
 	~Thread() { pthread_attr_destroy(&mAttrib); }
 
 
@@ -165,7 +172,7 @@ class Thread {
 	void start(void *(*task)(void*), void *arg);
 
 	/** Join a thread that will stop on its own. */
-	void join() { int s = pthread_join(mThread,NULL); assert(!s); }
+	void join() { int s = pthread_join(mThread,NULL); assert(!s); mThread = 0; }
 
 };
 
