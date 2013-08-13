@@ -1,6 +1,6 @@
 /**@file Module for performance-reporting mechanisms. */
 /*
-* Copyright 2012 Range Networks, Inc.
+* Copyright 2012, 2013 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -28,7 +28,12 @@
 
 #include <sqlite3util.h>
 #include <ostream>
+#include <map>
+#include <string>
+#include <Threads.h>
+#include <Timeval.h>
 
+typedef std::map<std::string, unsigned> ReportBatch;
 
 /**
 	Collect performance statistics into a database.
@@ -40,6 +45,9 @@ class ReportingTable {
 
 	sqlite3* mDB;				///< database connection
 	int mFacility;				///< rsyslogd facility
+	ReportBatch mBatch;			///< batch of report updates, not yet stored in the db
+	mutable Mutex mLock;		///< control for multithreaded read/write access to the batch
+	Thread mBatchCommitter;		///< thread responsible for committing batches of report updates to the db
 
 
 
@@ -69,6 +77,9 @@ class ReportingTable {
 	/** Take a max of an indexed parameter. */
 	bool max(const char* paramName, unsigned index, unsigned newVal);
 
+	/** Clear the whole table.  */
+	bool clear();
+
 	/** Clear a value.  */
 	bool clear(const char* paramName);
 
@@ -78,7 +89,12 @@ class ReportingTable {
 	/** Dump the database to a stream. */
 	void dump(std::ostream&) const;
 
+	/** Commit outstanding report updates to the database */
+	bool commit();
 };
+
+/** Periodically triggers ReportingTable::commit(). */
+void* reportingBatchCommitter(void*);
 
 #endif
 

@@ -1,6 +1,6 @@
 /**@file Module for performance-reporting mechanisms. */
 /*
-* Copyright 2012 Range Networks, Inc.
+* Copyright 2012, 2013 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -53,11 +53,25 @@ ReportingTable::ReportingTable(const char* filename)
 	if (!sqlite3_command(mDB,createReportingTable)) {
 		gLogEarly(LOG_EMERG | mFacility, "cannot create reporting table in database at %s, error message: %s", filename, sqlite3_errmsg(mDB));
 	}
+	// Set high-concurrency WAL mode.
+	if (!sqlite3_command(mDB,enableWAL)) {
+		gLogEarly(LOG_EMERG | mFacility, "Cannot enable WAL mode on database at %s, error message: %s", filename, sqlite3_errmsg(mDB));
+	}
+	// Start the commit thread
+	mBatchCommitter.start((void*(*)(void*))reportingBatchCommitter,NULL);
 }
 
 
 bool ReportingTable::create(const char* paramName)
 {
+	// add this report name to the batch map
+	mLock.lock();
+	if (mBatch.find(paramName) == mBatch.end()) {
+		mBatch[paramName] = 0;
+	}
+	mLock.unlock();
+
+	// and to the database
 	char cmd[200];
 	sprintf(cmd,"INSERT OR IGNORE INTO REPORTING (NAME,CLEAREDTIME) VALUES (\"%s\",%ld)", paramName, time(NULL));
 	if (!sqlite3_command(mDB,cmd)) {
@@ -71,12 +85,10 @@ bool ReportingTable::create(const char* paramName)
 
 bool ReportingTable::incr(const char* paramName)
 {
-	char cmd[200];
-	sprintf(cmd,"UPDATE REPORTING SET VALUE=VALUE+1, UPDATETIME=%ld WHERE NAME=\"%s\"", time(NULL), paramName);
-	if (!sqlite3_command(mDB,cmd)) {
-		gLogEarly(LOG_CRIT|mFacility, "cannot increment reporting parameter %s, error message: %s", paramName, sqlite3_errmsg(mDB));
-		return false;
-	}
+	mLock.lock();
+	mBatch[paramName]++;
+	mLock.unlock();
+
 	return true;
 }
 
@@ -100,6 +112,19 @@ bool ReportingTable::clear(const char* paramName)
 	sprintf(cmd,"UPDATE REPORTING SET VALUE=0, UPDATETIME=0, CLEAREDTIME=%ld WHERE NAME=\"%s\"", time(NULL), paramName);
 	if (!sqlite3_command(mDB,cmd)) {
 		gLogEarly(LOG_CRIT|mFacility, "cannot clear reporting parameter %s, error message: %s", paramName, sqlite3_errmsg(mDB));
+		return false;
+	}
+	return true;
+}
+
+
+
+bool ReportingTable::clear()
+{
+	char cmd[200];
+	sprintf(cmd,"UPDATE REPORTING SET VALUE=0, UPDATETIME=0, CLEAREDTIME=%ld", time(NULL));
+	if (!sqlite3_command(mDB,cmd)) {
+		gLogEarly(LOG_CRIT|mFacility, "cannot clear reporting table, error message: %s", sqlite3_errmsg(mDB));
 		return false;
 	}
 	return true;
@@ -140,6 +165,53 @@ bool ReportingTable::clear(const char* baseName, unsigned index)
 	return clear(name);
 }
 
+bool ReportingTable::commit()
+{
+	ReportBatch oustanding;
+	ReportBatch::iterator mp;
+	unsigned oustandingCount = 0;
 
+	// copy out to free up access to mBatch as quickly as possible
+	mLock.lock();
+	mp = mBatch.begin();
+	while (mp != mBatch.end()) {
+		if (mp->second > 0) {
+			oustanding[mp->first] = mp->second;
+			mBatch[mp->first] = 0;
+			oustandingCount++;
+		}
+		mp++;
+	}
+	mLock.unlock();
 
+	// now actually write them into the db if needed
+	if (oustandingCount > 0) {
+		Timeval timer;
+		char cmd[200];
 
+		// TODO : could wrap this in a BEGIN; COMMIT; pair to transactionize these X UPDATEs
+		mp = oustanding.begin();
+		while (mp != oustanding.end()) {
+			sprintf(cmd,"UPDATE REPORTING SET VALUE=VALUE+%u, UPDATETIME=%ld WHERE NAME=\"%s\"", mp->second, time(NULL), mp->first.c_str());
+			if (!sqlite3_command(mDB,cmd)) {
+				LOG(CRIT) << "could not increment reporting parameter " << mp->first << ", error message: " << sqlite3_errmsg(mDB);
+			}
+			mp++;
+		}
+
+		LOG(INFO) << "wrote " << oustandingCount << " entries in " << timer.elapsed() << "ms";
+	}
+
+	return true;
+}
+
+extern ReportingTable gReports;
+void* reportingBatchCommitter(void*)
+{
+	while (true) {
+		sleep(10);
+		gReports.commit();
+	}
+
+	return NULL;
+}

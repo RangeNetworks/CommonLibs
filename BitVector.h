@@ -351,9 +351,12 @@ class BitVector : public Vector<char> {
 		other.mData=NULL;
 	}
 
-	void settfb(int i, int j) const
+	/** Set a bit */
+	void settfb(size_t index, int value)
 	{
-		mStart[i] = j;
+		char *dp = mStart+index;
+		assert(dp<mEnd);
+		*dp = value;
 	}
 
 };
@@ -448,6 +451,22 @@ class SoftVector: public Vector<float> {
 
 	/** Slice the whole signal into bits. */
 	BitVector sliced() const;
+
+	/** Return a soft bit. */
+	float softbit(size_t index) const
+	{
+		const float *dp = mStart+index;
+		assert(dp<mEnd);
+		return *dp;
+	}
+
+	/** Set a soft bit */
+	void settfb(size_t index, float value)
+	{
+		float *dp = mStart+index;
+		assert(dp<mEnd);
+		*dp = value;
+	}
 
 };
 

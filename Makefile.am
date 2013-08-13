@@ -41,7 +41,8 @@ libcommon_la_SOURCES = \
 	Configuration.cpp \
 	sqlite3util.cpp \
 	URLEncode.cpp \
-	Utils.cpp
+	Utils.cpp \
+	A51.cpp
 
 noinst_PROGRAMS = \
 	BitVectorTest \
@@ -53,7 +54,8 @@ noinst_PROGRAMS = \
 	ConfigurationTest \
 	LogTest \
 	URLEncodeTest \
-	F16Test
+	F16Test \
+	A51Test
 
 #	ReportingTest 
 
@@ -72,7 +74,8 @@ noinst_HEADERS = \
 	URLEncode.h \
 	Utils.h \
 	Logger.h \
-	sqlite3util.h
+	sqlite3util.h \
+	A51.h
 
 URLEncodeTest_SOURCES = URLEncodeTest.cpp
 URLEncodeTest_LDADD = libcommon.la
@@ -107,6 +110,9 @@ LogTest_SOURCES = LogTest.cpp
 LogTest_LDADD = libcommon.la $(SQLITE_LA)
 
 F16Test_SOURCES = F16Test.cpp
+
+A51Test_SOURCES = A51Test.cpp
+A51Test_LDADD = libcommon.la
 
 MOSTLYCLEANFILES += testSource testDestination
 

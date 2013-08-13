@@ -193,7 +193,7 @@ std::ostream& operator<<(std::ostream& os, const Statistic<double> &stat) { stat
 std::string replaceAll(const std::string input, const std::string search, const std::string replace)
 {
 	std::string output = input;
- 	int index = 0;
+ 	unsigned index = 0;
 
 	while (true) {
 		index = output.find(search, index);

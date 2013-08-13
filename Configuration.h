@@ -173,6 +173,7 @@ typedef std::map<std::string, ConfigurationRecord> ConfigurationRecordMap;
 typedef std::map<HashString, ConfigurationRecord> ConfigurationMap;
 class ConfigurationKey;
 typedef std::map<std::string, ConfigurationKey> ConfigurationKeyMap;
+ConfigurationKeyMap getConfigurationKeys();
 
 /**
 	A class for maintaining a configuration key-value table,
@@ -262,9 +263,6 @@ class ConfigurationTable {
 
 	/** Set or change a value in the table.  */
 	bool set(const std::string& key, long value);
-
-	/** Create an entry in the table, no value though. */
-	bool set(const std::string& key);
 
 	/**
 		Remove an entry from the table.

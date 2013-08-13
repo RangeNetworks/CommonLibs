@@ -32,12 +32,6 @@
 #include <iostream>
 #include <string.h>
 
-#ifdef DEBUG_CONFIG
-#define	debugLogEarly gLogEarly
-#else
-#define	debugLogEarly
-#endif
-
 
 using namespace std;
 
@@ -84,9 +78,24 @@ ConfigurationTable::ConfigurationTable(const char* filename, const char *wCmdNam
 	if (!sqlite3_command(mDB,createConfigTable)) {
 		gLogEarly(LOG_EMERG, "cannot create configuration table in database at %s, error message: %s", filename, sqlite3_errmsg(mDB));
 	}
+	// Set high-concurrency WAL mode.
+	if (!sqlite3_command(mDB,enableWAL)) {
+		gLogEarly(LOG_EMERG, "cannot enable WAL mode on database at %s, error message: %s", filename, sqlite3_errmsg(mDB));
+	}
 
 	// Build CommonLibs schema
 	ConfigurationKey *tmp;
+	tmp = new ConfigurationKey("Control.NumSQLTries","3",
+		"attempts",
+		ConfigurationKey::DEVELOPER,
+		ConfigurationKey::VALRANGE,
+		"1:10",// educated guess
+		false,
+		"Number of times to retry SQL queries before declaring a database access failure."
+	);
+	mSchema[tmp->getName()] = *tmp;
+	delete tmp;
+
 	tmp = new ConfigurationKey("Log.Alarms.Max","20",
 		"alarms",
 		ConfigurationKey::CUSTOMER,
@@ -96,7 +105,7 @@ ConfigurationTable::ConfigurationTable(const char* filename, const char *wCmdNam
 		"Maximum number of alarms to remember inside the application."
 	);
 	mSchema[tmp->getName()] = *tmp;
-	free(tmp);
+	delete tmp;
 
 	tmp = new ConfigurationKey("Log.File","",
 		"",
@@ -110,7 +119,7 @@ ConfigurationTable::ConfigurationTable(const char* filename, const char *wCmdNam
 			"To disable again, execute \"unconfig Log.File\"."
 	);
 	mSchema[tmp->getName()] = *tmp;
-	free(tmp);
+	delete tmp;
 
 	tmp = new ConfigurationKey("Log.Level","NOTICE",
 		"",
@@ -128,7 +137,7 @@ ConfigurationTable::ConfigurationTable(const char* filename, const char *wCmdNam
 		"Default logging level when no other level is defined for a file."
 	);
 	mSchema[tmp->getName()] = *tmp;
-	free(tmp);
+	delete tmp;
 
 	// Add application specific schema
 	mSchema.insert(wSchema.begin(), wSchema.end());
@@ -150,12 +159,13 @@ string ConfigurationTable::getDefaultSQL(const std::string& program, const std::
 	ss << "-- rather in the program's ConfigurationKey schema." << endl;
 	ss << "--" << endl;
 	ss << "PRAGMA foreign_keys=OFF;" << endl;
+	ss << "PRAGMA journal_mode=WAL;" << endl;
 	ss << "BEGIN TRANSACTION;" << endl;
-	ss << "CREATE TABLE CONFIG ( KEYSTRING TEXT UNIQUE NOT NULL, VALUESTRING TEXT, STATIC INTEGER DEFAULT 0, OPTIONAL INTEGER DEFAULT 0, COMMENTS TEXT DEFAULT '');" << endl;
+	ss << "CREATE TABLE IF NOT EXISTS CONFIG ( KEYSTRING TEXT UNIQUE NOT NULL, VALUESTRING TEXT, STATIC INTEGER DEFAULT 0, OPTIONAL INTEGER DEFAULT 0, COMMENTS TEXT DEFAULT '');" << endl;
 
 	mp = mSchema.begin();
 	while (mp != mSchema.end()) {
-		ss << "INSERT INTO \"CONFIG\" VALUES(";
+		ss << "INSERT OR IGNORE INTO \"CONFIG\" VALUES(";
 			// name
 			ss << "'" << mp->first << "',";
 			// default
@@ -269,7 +279,8 @@ bool ConfigurationTable::defines(const string& key)
 		ScopedLock lock(mLock);
 		return lookup(key).defined();
 	} catch (ConfigurationTableKeyNotFound) {
-		debugLogEarly(LOG_ALERT, "configuration parameter %s not found", key.c_str());
+		// TODO: re-enable once we figure out why this message is being sent to syslog regardless of log level
+		//gLogEarly(LOG_DEBUG, "configuration parameter %s not found", key.c_str());
 		return false;
 	}
 }
@@ -580,7 +591,7 @@ string ConfigurationTable::getStr(const string& key)
 		return lookup(key).value();
 	} catch (ConfigurationTableKeyNotFound) {
 		// Raise an alert and re-throw the exception.
-		debugLogEarly(LOG_ALERT, "configuration parameter %s has no defined value", key.c_str());
+		gLogEarly(LOG_DEBUG, "configuration parameter %s has no defined value", key.c_str());
 		throw ConfigurationTableKeyNotFound(key);
 	}
 }
@@ -592,7 +603,7 @@ bool ConfigurationTable::getBool(const string& key)
 		return getNum(key) != 0;
 	} catch (ConfigurationTableKeyNotFound) {
 		// Raise an alert and re-throw the exception.
-		debugLogEarly(LOG_ALERT, "configuration parameter %s has no defined value", key.c_str());
+		gLogEarly(LOG_DEBUG, "configuration parameter %s has no defined value", key.c_str());
 		throw ConfigurationTableKeyNotFound(key);
 	}
 }
@@ -606,7 +617,7 @@ long ConfigurationTable::getNum(const string& key)
 		return lookup(key).number();
 	} catch (ConfigurationTableKeyNotFound) {
 		// Raise an alert and re-throw the exception.
-		debugLogEarly(LOG_ALERT, "configuration parameter %s has no defined value", key.c_str());
+		gLogEarly(LOG_DEBUG, "configuration parameter %s has no defined value", key.c_str());
 		throw ConfigurationTableKeyNotFound(key);
 	}
 }
@@ -619,7 +630,7 @@ float ConfigurationTable::getFloat(const string& key)
 		return lookup(key).floatNumber();
 	} catch (ConfigurationTableKeyNotFound) {
 		// Raise an alert and re-throw the exception.
-		debugLogEarly(LOG_ALERT, "configuration parameter %s has no defined value", key.c_str());
+		gLogEarly(LOG_DEBUG, "configuration parameter %s has no defined value", key.c_str());
 		throw ConfigurationTableKeyNotFound(key);
 	}
 }
@@ -634,7 +645,7 @@ std::vector<string> ConfigurationTable::getVectorOfStrings(const string& key)
 		line = strdup(rec.value().c_str());
 	} catch (ConfigurationTableKeyNotFound) {
 		// Raise an alert and re-throw the exception.
-		debugLogEarly(LOG_ALERT, "configuration parameter %s has no defined value", key.c_str());
+		gLogEarly(LOG_DEBUG, "configuration parameter %s has no defined value", key.c_str());
 		throw ConfigurationTableKeyNotFound(key);
 	}
 
@@ -665,7 +676,7 @@ std::vector<unsigned> ConfigurationTable::getVector(const string& key)
 		line = strdup(rec.value().c_str());
 	} catch (ConfigurationTableKeyNotFound) {
 		// Raise an alert and re-throw the exception.
-		debugLogEarly(LOG_ALERT, "configuration parameter %s has no defined value", key.c_str());
+		gLogEarly(LOG_DEBUG, "configuration parameter %s has no defined value", key.c_str());
 		throw ConfigurationTableKeyNotFound(key);
 	}
 
@@ -753,7 +764,13 @@ bool ConfigurationTable::set(const string& key, const string& value)
 {
 	assert(mDB);
 	ScopedLock lock(mLock);
-	string cmd = "INSERT OR REPLACE INTO CONFIG (KEYSTRING,VALUESTRING,OPTIONAL) VALUES (\"" + key + "\",\"" + value + "\",1)";
+	string cmd;
+	if (keyDefinedInSchema(key)) {
+		cmd = "INSERT OR REPLACE INTO CONFIG (KEYSTRING,VALUESTRING,OPTIONAL,COMMENTS) VALUES (\"" + key + "\",\"" + value + "\",1,\'" + mSchema[key].getDescription() + "\')";
+	} else {
+		cmd = "INSERT OR REPLACE INTO CONFIG (KEYSTRING,VALUESTRING,OPTIONAL) VALUES (\"" + key + "\",\"" + value + "\",1)";
+	}
+	
 	bool success = sqlite3_command(mDB,cmd.c_str());
 	// Cache the result.
 	if (success) mCache[key] = ConfigurationRecord(value);
@@ -766,18 +783,6 @@ bool ConfigurationTable::set(const string& key, long value)
 	sprintf(buffer,"%ld",value);
 	return set(key,buffer);
 }
-
-
-bool ConfigurationTable::set(const string& key)
-{
-	assert(mDB);
-	ScopedLock lock(mLock);
-	string cmd = "INSERT OR REPLACE INTO CONFIG (KEYSTRING,VALUESTRING,OPTIONAL) VALUES (\"" + key + "\",NULL,1)";
-	bool success = sqlite3_command(mDB,cmd.c_str());
-	if (success) mCache[key] = ConfigurationRecord(true);
-	return success;
-}
-
 
 void ConfigurationTable::checkCacheAge()
 {

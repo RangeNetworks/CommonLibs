@@ -121,7 +121,7 @@ ConfigurationKeyMap getConfigurationKeys()
 		""
 	);
 	map[tmp->getName()] = *tmp;
-	free(tmp);
+	delete tmp;
 
 	tmp = new ConfigurationKey("numnumber","42",
 		"",
@@ -132,7 +132,7 @@ ConfigurationKeyMap getConfigurationKeys()
 		""
 	);
 	map[tmp->getName()] = *tmp;
-	free(tmp);
+	delete tmp;
 
 	tmp = new ConfigurationKey("newstring","new string value",
 		"",
@@ -143,7 +143,7 @@ ConfigurationKeyMap getConfigurationKeys()
 		""
 	);
 	map[tmp->getName()] = *tmp;
-	free(tmp);
+	delete tmp;
 
 	return map;
 }
