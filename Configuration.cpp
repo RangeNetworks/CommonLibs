@@ -944,53 +944,6 @@ template<class T> bool ConfigurationKey::isInValRange(const ConfigurationKey &ke
 	return ret;
 }
 
-const std::string ConfigurationKey::getARFCNsString() {
-	stringstream ss;
-	int i;
-	float downlink;
-	float uplink;
-
-	// 128:251 GSM850
-	downlink = 869.2;
-	uplink = 824.2;
-	for (i = 128; i <= 251; i++) {
-		ss << i << "|GSM850 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
-	}
-
-	// 1:124 PGSM900
-	downlink = 935.2;
-	uplink = 890.2;
-	for (i = 1; i <= 124; i++) {
-		ss << i << "|PGSM900 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
-	}
-
-	// 512:885 DCS1800
-	downlink = 1805.2;
-	uplink = 1710.2;
-	for (i = 512; i <= 885; i++) {
-		ss << i << "|DCS1800 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
-	}
-
-	// 512:810 PCS1900
-	downlink = 1930.2;
-	uplink = 1850.2;
-	for (i = 512; i <= 810; i++) {
-		ss << i << "|PCS1900 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
-	}
-
-	ss << endl;
-
-	return ss.str();
-}
-
 const std::string ConfigurationKey::visibilityLevelToString(const ConfigurationKey::VisibilityLevel& visibility) {
 	std::string ret = "UNKNOWN ERROR";
 

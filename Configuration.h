@@ -173,7 +173,6 @@ typedef std::map<std::string, ConfigurationRecord> ConfigurationRecordMap;
 typedef std::map<HashString, ConfigurationRecord> ConfigurationMap;
 class ConfigurationKey;
 typedef std::map<std::string, ConfigurationKey> ConfigurationKeyMap;
-ConfigurationKeyMap getConfigurationKeys();
 
 /**
 	A class for maintaining a configuration key-value table,
@@ -396,6 +395,7 @@ class ConfigurationKey {
 	const std::string& getDefaultValue() const { return mDefaultValue; }
 	void updateDefaultValue(const std::string& newValue) { mDefaultValue = newValue; }
 	void updateDefaultValue(const int newValue) { std::stringstream ss; ss << newValue; updateDefaultValue(ss.str()); }
+	void updateValidValues(const std::string& newValue) { mValidValues = newValue; }
 	const std::string& getUnits() const { return mUnits; }
 	const VisibilityLevel& getVisibility() const { return mVisibility; }
 	const Type& getType() const { return mType; }
@@ -410,7 +410,6 @@ class ConfigurationKey {
 	static const std::string typeToString(const ConfigurationKey::Type& type);
 	static void printKey(const ConfigurationKey &key, const std::string& currentValue, std::ostream& os);
 	static void printDescription(const ConfigurationKey &key, std::ostream& os);
-	static const std::string getARFCNsString();
 };
 
 
