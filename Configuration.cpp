@@ -959,13 +959,15 @@ const std::string ConfigurationKey::getARFCNsString() {
 		uplink += 0.2;
 	}
 
-	// 1:124 PGSM900
-	downlink = 935.2;
-	uplink = 890.2;
-	for (i = 1; i <= 124; i++) {
-		ss << i << "|PGSM900 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
+	// 0:124 EGSM900
+	downlink = 935.0;
+	uplink = 890.0;
+	for (i = 0; i <= 124; i++) {
+		ss << i << "|PGSM900 #" << i << " : " << (downlink + (0.2*i)) << " MHz downlink / " << (uplink + (0.2*i)) << " MHz uplink,";
+	}
+	// 975:1023 EGSM900
+	for (i = 975; i <= 1023 ; i++) {
+		ss << i << "|PGSM900 #" << i << " : " << (downlink + (0.2*i)) << " MHz downlink / " << (uplink + (0.2*i)) << " MHz uplink,";
 	}
 
 	// 512:885 DCS1800
