@@ -522,15 +522,32 @@ bool ConfigurationTable::isValidValue(const std::string& name, const std::string
 		case ConfigurationKey::MIPADDRESS: {
 			int startPos = -1;
 			uint endPos = 0;
+			uint delimiter;
+			std::string ip;
+			int port = -1;
 
 			do {
 				startPos++;
 				endPos = val.find(' ', startPos);
+				port = -1;
+
 				if (ConfigurationKey::isValidIP(val.substr(startPos, endPos-startPos))) {
 					ret = true;
 				} else {
-					ret = false;
-					break;
+					delimiter = val.find(':');
+					if (delimiter != std::string::npos) {
+						ip = val.substr(startPos, delimiter);
+						std::stringstream(val.substr(delimiter+1, endPos)) >> port;
+						if (ConfigurationKey::isValidIP(ip) && 1 <= port && port <= 65535) {
+							ret = true;
+						} else {
+							ret = false;
+							break;
+						}
+					} else {
+						ret = false;
+						break;
+					}
 				}
 
 			} while ((startPos = endPos) != (int)std::string::npos);
