@@ -74,13 +74,13 @@ class PointerFIFO {
 	unsigned size() const { return mSize; }
 	unsigned totalSize() const { return 0; }	// Not used in this version.
 
-	/** Put an item into the FIFO at the back of the queue. */
+	/** Put an item into the FIFO at the back of the queue. aka push_back */
 	void put(void* val);
 	/** Push an item on the front of the FIFO. */
 	void push_front(void*val);			// pat added.
 
 	/**
-		Take an item from the FIFO.
+		Take an item from the FIFO. aka pop_front, but returns NULL 
 		Returns NULL for empty list.
 	*/
 	void* get();
@@ -123,6 +123,7 @@ class SingleLinkList
 	unsigned mTotalSize;	// Total of size() method of elements in list.
 
 	public:
+	typedef void iterator;	// Does not exist for this class, but needs to be defined.
 	SingleLinkList() : mHead(0), mTail(0), mSize(0), mTotalSize(0) {}
 	unsigned size() const { return mSize; }
 	unsigned totalSize() const { return mTotalSize; }

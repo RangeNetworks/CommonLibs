@@ -23,7 +23,7 @@
 
 */
 
-
+#define ENABLE_VECTORDEBUG
 
 #include "Vector.h"
 #include <iostream>
@@ -35,9 +35,28 @@ ConfigurationTable gConfig;
 using namespace std;
 
 typedef Vector<int> TestVector;
+int barfo;
+void foo(TestVector a)
+{
+	barfo = a.size();	// Do something so foo wont be optimized out.
+}
+void anotherTest()
+{
+	cout << "START Vector anotherTest" << endl;
+	TestVector v0(10);
+	TestVector atest = v0.head(3);
+	cout << atest << endl;
+	cout << "calling head" << endl;
+	cout << v0.head(3) << endl;
+	cout << "Passing Vector" << endl;
+	// This calls the Vector non-const copy constructor
+	foo(v0);
+	cout << "FINISH anotherTest" << endl;
+}
 
 int main(int argc, char *argv[])
 {
+	anotherTest();
 	TestVector test1(5);
 	for (int i=0; i<5; i++) test1[i]=i;
 	TestVector test2(5);
@@ -49,7 +68,9 @@ int main(int argc, char *argv[])
 	{
 		TestVector testC(test1,test2);
 		cout << testC << endl;
-		cout << testC.head(3) << endl;
+
+		TestVector foo = testC.head(3);
+		//cout << testC.head(3) << endl;
 		cout << testC.tail(3) << endl;
 		testC.fill(8);
 		cout << testC << endl;

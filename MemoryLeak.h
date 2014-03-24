@@ -48,6 +48,14 @@ struct MemStats {
 		mScramblingCode,
 		mURlcDownSdu,
 		mURlcPdu,
+		mSipBase,
+		mSipDialog,
+		mSipMessage,
+		mSipTransaction,
+		mMMContext,
+		mMMUser,
+		mTranEntry,
+		mMachineBase,
 		// Must be last:
 		mMax,
 	};

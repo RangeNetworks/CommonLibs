@@ -1,7 +1,7 @@
 /*
 * Copyright 2009, 2010 Free Software Foundation, Inc.
 * Copyright 2010 Kestrel Signal Processing, Inc.
-* Copyright 2011, 2012 Range Networks, Inc.
+* Copyright 2011, 2012, 2014 Range Networks, Inc.
 *
 *
 * This software is distributed under the terms of the GNU Affero Public License.
@@ -70,6 +70,7 @@ int numLevels = 8;
 bool gLogToConsole = 0;
 FILE *gLogToFile = NULL;
 Mutex gLogToLock;
+LogGroup gLogGroup;
 
 
 int levelStringToInt(const string& name)
@@ -117,6 +118,13 @@ int getLoggingLevel(const char* filename)
 	if (gConfig.defines(keyName)) return lookupLevel(keyName);
 	return lookupLevel("Log.Level");
 }
+
+//bool gCheckGroupLogLevel(const char *groupname, int loglevel)
+//{
+//	// Gag me
+//	string keyName = string("Log.Group.") + groupname;
+//	return gConfig.defines(keyName) ? (lookupLevel(gConfig.getStr(keyName)) >= loglevel) : false;
+//}
 
 
 
@@ -220,8 +228,17 @@ Log::~Log()
 }
 
 
+// (pat) This is the log initialization function.
+// It is invoked by this line in OpenBTS.cpp, and similar lines in other programs like the TransceiverRAD1:
+// 		Log dummy("openbts",gConfig.getStr("Log.Level").c_str(),LOG_LOCAL7);
+// The LOCAL7 corresponds to the "local7" line in the file /etc/rsyslog.d/OpenBTS.log.
 Log::Log(const char* name, const char* level, int facility)
 {
+	// (pat) This 'constructor' has nothing to do with the regular use of the Log class, so we have
+	// to set this special flag to prevent the destructor from generating a syslog message.
+	// This is really goofy, but there is a reason - this is the way whoever wrote this got the Logger initialized early during
+	// static class initialization since OpenBTS has so many static classes whose constructors do work (a really bad idea)
+	// and may generate log messages.
 	mDummyInit = true;
 	gLogInit(name, level, facility);
 }
@@ -232,6 +249,34 @@ ostringstream& Log::get()
 	assert(mPriority<numLevels);
 	mStream << levelNames[mPriority] <<  ' ';
 	return mStream;
+}
+
+
+
+// Allow applications to also pass in a filename.  Filename should come from the database
+void gLogInitWithFile(const char* name, const char* level, int facility, char * LogFilePath)
+{
+	// Set the level if one has been specified.
+	if (level) {
+		gConfig.set("Log.Level",level);
+	}
+
+	if (gLogToFile==0 && LogFilePath != 0 && *LogFilePath != 0 && strlen(LogFilePath) > 0) {
+		gLogToFile = fopen(LogFilePath,"w"); // New log file each time we start.
+		if (gLogToFile) {
+			time_t now;
+			time(&now);
+			fprintf(gLogToFile,"Starting at %s",ctime(&now));
+			fflush(gLogToFile);
+			std::cout << name <<" logging to file: " << LogFilePath << "\n";
+		}
+	}
+
+	// Open the log connection.
+	openlog(name,0,facility);
+
+	// We cant call this from the Mutex itself because the Logger uses Mutex.
+	gMutexLogLevel = gGetLoggingLevel("Mutex.cpp");
 }
 
 
@@ -255,13 +300,16 @@ void gLogInit(const char* name, const char* level, int facility)
 				time(&now);
 				fprintf(gLogToFile,"Starting at %s",ctime(&now));
 				fflush(gLogToFile);
-				std::cout << "Logging to file: " << fn << "\n";
+				std::cout << name <<" logging to file: " << fn << "\n";
 			}
 		}
 	}
 
 	// Open the log connection.
 	openlog(name,0,facility);
+
+	// We cant call this from the Mutex itself because the Logger uses Mutex.
+	gMutexLogLevel = gGetLoggingLevel("Mutex.cpp");
 }
 
 
@@ -272,6 +320,106 @@ void gLogEarly(int level, const char *fmt, ...)
 	va_start(args, fmt);
 	vsyslog(level | LOG_USER, fmt, args);
 	va_end(args);
+}
+
+// Return _NumberOfLogGroups if invalid.
+LogGroup::Group LogGroup::groupNameToIndex(const char *groupName) const
+{
+	for (unsigned g = (Group)0; g < _NumberOfLogGroups; g++) {
+		if (0 == strcasecmp(mGroupNames[g],groupName)) { return (Group) g; }	// happiness
+	}
+	return _NumberOfLogGroups;	// failed
+}
+
+LogGroup::LogGroup() { LogGroupInit(); }
+
+// These must match LogGroup::Group.
+const char *LogGroup::mGroupNames[] = { "Control", "SIP", "GSM", "GPRS", "Layer2", NULL };
+
+void LogGroup::LogGroupInit()
+{
+	// Error check some more.
+	assert(0==strcmp(mGroupNames[Control],"Control"));
+	assert(0==strcmp(mGroupNames[SIP],"SIP"));
+	assert(0==strcmp(mGroupNames[GSM],"GSM"));
+	assert(0==strcmp(mGroupNames[GPRS],"GPRS"));
+	assert(0==strcmp(mGroupNames[Layer2],"Layer2"));
+
+	// Error check mGroupNames is the correct length;
+	unsigned g;
+	for (g = 0; mGroupNames[g]; g++) { continue; }
+	assert(g == _NumberOfLogGroups);	// If you get this, go fix mGroupNames to match enum LogGroup::Group.
+
+	for (unsigned g = 0; g < _NumberOfLogGroups; g++) {
+		mDebugLevel[g] = 0;
+	}
+
+#if 0
+	if (mGroupNameToIndex.size()) { return; }	// inited previously.
+	mGroupNameToIndex[string("Control")] = Control;
+	mGroupNameToIndex[string("SIP")] = SIP;
+	mGroupNameToIndex[string("GSM")] = GSM;
+	mGroupNameToIndex[string("GPRS")] = GPRS;
+	mGroupNameToIndex[string("Layer2")] = Layer2;
+#endif
+}
+
+static const char *LogGroupPrefix = "Log.Group.";
+
+
+#if UNUSED
+// Return true if this was a LogGroup config parameter.
+// These dont have to be fast.
+bool LogGroup::setGroup(const string groupName, const string levelName)
+{
+	const int len = strlen(LogGroupPrefix);
+	if (0 != strncasecmp(groupName.c_str(),LogGroupPrefix,len)) { return false; }
+	Group g = groupNameToIndex(groupName.c_str() + len);
+	if (g >= _NumberOfLogGroups) {
+		LOG(ALERT) << "Unrecognized Log.Group config parameter:"<<groupName;
+	} else {
+		mDebugLevel[g] = lookupLevel(levelName);
+	}
+
+	//GroupMapType::iterator it = mGroupNameToIndex.find(groupName);
+	//if (it != map::end) {
+	//	mDebugLevel[it->second] = lookupLevel(levelName);
+	//}
+	return true;
+}
+
+bool LogGroup::unsetGroup(const string groupName)
+{
+	const int len = strlen(LogGroupPrefix);
+	if (0 != strncasecmp(groupName.c_str(),LogGroupPrefix,len)) { return false; }
+	Group g = groupNameToIndex(groupName.c_str() + len);
+	if (g >= _NumberOfLogGroups) {
+		LOG(ALERT) << "Unrecognized Log.Group config parameter:"<<groupName;
+	} else {
+		mDebugLevel[g] = 0;	// Turn off debugging.
+	}
+
+	//GroupMapType::iterator it = mGroupNameToIndex.find(groupName);
+	//if (it != map::end) {
+	//	mDebugLevel[it->second] = lookupLevel(levelName);
+	//}
+	return true;
+}
+#endif
+
+void LogGroup::setAll()
+{
+	LOG(DEBUG);
+	string prefix = string(LogGroupPrefix);
+	for (unsigned g = 0; g < _NumberOfLogGroups; g++) {
+		string param = prefix + mGroupNames[g];
+		if (gConfig.defines(param)) {
+			string levelName = gConfig.getStr(param);
+			LOG(DEBUG) << "Setting "<<LOGVAR(param)<<LOGVAR(levelName);
+			//mDebugLevel[g] = lookupLevel(levelName);
+			mDebugLevel[g] = levelStringToInt(levelName);
+		}
+	}
 }
 
 // vim: ts=4 sw=4

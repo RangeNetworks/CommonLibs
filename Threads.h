@@ -1,5 +1,5 @@
 /*
-* Copyright 2008, 2011 Free Software Foundation, Inc.
+* Copyright 2008, 2011, 2014 Free Software Foundation, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -37,6 +37,8 @@ class Mutex;
 /**@name Multithreaded access for standard streams. */
 //@{
 
+extern int gMutexLogLevel;	// The mutexes cannot call gConfig or gGetLoggingLevel so we have to get the log level indirectly.
+
 /**@name Functions for gStreamLock. */
 //@{
 extern Mutex gStreamLock;	///< global lock for cout and cerr
@@ -72,6 +74,18 @@ class Mutex {
 
 	pthread_mutex_t mMutex;
 	pthread_mutexattr_t mAttribs;
+	int mLockCnt;
+	int mMutexLogLevel;	// We cant use LOG inside the Mutex because LOG itself uses mutexes, so get the LOG level at mutex creation time
+						// and use it for this mutex from then on.
+
+	static const int maxLocks = 5;		// Just the maximum number of recursive locks we report during debugging, not the max possible.
+	const char *mLockerFile[maxLocks];
+	unsigned mLockerLine[maxLocks];
+	const char *lockerFile() { int i = mLockCnt-1; return (i >= 0 && i < maxLocks) ? mLockerFile[i] : NULL; }
+	//unused: bool anyDebugging() { for (int i = 0; i < maxLocks; i++) { if (mLockerFile[i]) return true; return false; } }
+
+	// pthread_mutex_trylock returns 0 and trylock returns true if the lock was acquired.
+	bool trylock();
 
 	public:
 
@@ -79,16 +93,71 @@ class Mutex {
 
 	~Mutex();
 
-	void lock() { pthread_mutex_lock(&mMutex); }
+	void _lock() { pthread_mutex_lock(&mMutex); }
+	void lock();
 
-	bool trylock() { return pthread_mutex_trylock(&mMutex)==0; }
+	// (pat) Like the above but report blocking; to see report you must set both Log.Level to DEBUG for both Threads.cpp and the file.
+	void lock(const char *file, unsigned line);
 
-	void unlock() { pthread_mutex_unlock(&mMutex); }
+	std::string mutext() const;
+
+	// Returns true if the lock was acquired, or false if it timed out.
+	bool timedlock(int msecs);
+
+	void unlock();
+
+	// (pat) I use this to assert that the Mutex is locked on entry to some method that requres it, but only in debug mode.
+	int lockcnt() { return mLockCnt; }
 
 	friend class Signal;
 
 };
 
+/** A class for reader/writer based on pthread_rwlock. */
+class RWLock {
+
+	private:
+
+	pthread_rwlock_t mRWLock;
+	pthread_rwlockattr_t mAttribs;
+
+	public:
+
+	RWLock();
+
+	~RWLock();
+
+	void wlock() { pthread_rwlock_wrlock(&mRWLock); }
+	void rlock() { pthread_rwlock_rdlock(&mRWLock); }
+
+	bool trywlock() { return pthread_rwlock_trywrlock(&mRWLock)==0; }
+	bool tryrlock() { return pthread_rwlock_tryrdlock(&mRWLock)==0; }
+
+	void unlock() { pthread_rwlock_unlock(&mRWLock); }
+
+};
+
+
+#if 0
+// (pat) NOT FINISHED OR TESTED.  A pointer that releases a specified mutex when it goes out of scope.
+template<class PointsTo>
+class ScopedPointer {
+	Mutex &mControllingMutex;	// A pointer to the mutex for the object being protected.
+	PointsTo *mPtr;
+
+	public:
+	ScopedPointer(Mutex& wMutex) :mControllingMutex(wMutex) { mControllingMutex.lock(); }
+	// Requisite Copy Constructor:  The mutex is already locked, but we need to lock it again because the
+	// other ScopedPointer is about to go out of scope and will call unlock.
+	ScopedPointer(ScopedPointer &other) :mControllingMutex(other.mControllingMutex) { mControllingMutex.lock(); }
+	~ScopedPointer() { mControllingMutex.unlock(); }
+
+	// You are allowed to assign and derference the underlying pointer - it still holds the Mutex locked.
+	PointsTo *operator->() const { return mPtr; }
+	PointsTo * operator=(PointsTo *other) { mPtr = other; }
+	PointsTo& operator*() { return *mPtr; }
+};
+#endif
 
 class ScopedLock {
 
@@ -97,6 +166,8 @@ class ScopedLock {
 
 	public:
 	ScopedLock(Mutex& wMutex) :mMutex(wMutex) { mMutex.lock(); }
+	// Like the above but report blocking; to see report you must set both Log.Level to DEBUG for both Threads.cpp and the file.
+	ScopedLock(Mutex& wMutex,const char *file, unsigned line):mMutex(wMutex) { mMutex.lock(file,line); }
 	~ScopedLock() { mMutex.unlock(); }
 
 };
@@ -121,7 +192,7 @@ class Signal {
 		Block for the signal up to the cancellation timeout.
 		Under Linux, spurious returns are possible.
 	*/
-	void wait(Mutex& wMutex, unsigned timeout) const;
+	void wait(Mutex& wMutex, long timeout) const;
 
 	/**
 		Block for the signal.

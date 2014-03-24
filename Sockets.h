@@ -33,7 +33,6 @@
 #include <sys/un.h>
 #include <errno.h>
 #include <list>
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -50,7 +49,9 @@ bool resolveAddress(struct sockaddr_in *address, const char *host, unsigned shor
 bool resolveAddress(struct sockaddr_in *address, const char *hostAndPort);
 
 /** An exception to throw when a critical socket operation fails. */
-class SocketError {};
+struct SocketError {
+	SocketError();
+};
 #define SOCKET_ERROR {throw SocketError(); }
 
 /** Abstract class for connectionless sockets. */
@@ -142,6 +143,11 @@ public:
 class UDPSocket : public DatagramSocket {
 
 public:
+	// (pat) If you want to set the local port using some sql option, you MUST NOT do it in a constructor
+	// unless that constructor is called from OpenBTS.cpp, because there is a constructor race between
+	// class ConfigurationTable (needed by the call to gConfig) and the class containing the UDPSocket and calling gConfig.
+	// Alternatively, since we cannot add an empty constructor (because it is ambiguous with the following)
+	// you must use a UDPSocket* and allocate it with 'new'.
 
 	/** Open a USP socket with an OS-assigned port and no default destination. */
 	UDPSocket( unsigned short localPort=0);

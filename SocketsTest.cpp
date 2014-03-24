@@ -31,6 +31,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Configuration.h"
+ConfigurationTable gConfig;
 
 static const int gNumToSend = 10;
 

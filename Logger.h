@@ -1,6 +1,7 @@
 /*
 * Copyright 2009, 2010 Free Software Foundation, Inc.
 * Copyright 2010 Kestrel Signal Processing, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -23,6 +24,8 @@
 
 */
 
+// (pat) Logging is via rsyslogd controlled by /etc/rsyslog.d/OpenBTS.conf
+
 // (pat) WARNING is stupidly defined in /usr/local/include/osipparser2/osip_const.h.
 // This must be outside the #ifndef LOGGER_H to fix it as long as Logger.h included after the above file.
 #ifdef WARNING
@@ -39,12 +42,23 @@
 #include <list>
 #include <map>
 #include <string>
+#include <assert.h>
+// We cannot include Utils.h because it includes Logger.h, so just declare timestr() here.
+// If timestr decl is changed G++ will whine when Utils.h is included.
+namespace Utils { const std::string timestr(); };
 
 #define _LOG(level) \
 	Log(LOG_##level).get() << pthread_self() \
-	<< timestr() << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
+	<< Utils::timestr() << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
 
+// (pat) If you '#define LOG_GROUP groupname' before including Logger.h, then you can set Log.Level.groupname as well as Log.Level.filename.
+#ifdef LOG_GROUP
+//#define CHECK_GROUP_LOG_LEVEL(groupname,loglevel) gCheckGroupLogLevel(#groupname,loglevel)
+//#define IS_LOG_LEVEL(wLevel) (CHECK_GROUP_LOG_LEVEL(LOG_GROUP,LOG_##wLevel) || gGetLoggingLevel(__FILE__)>=LOG_##wLevel)
+#define IS_LOG_LEVEL(wLevel) (gCheckGroupLogLevel(LOG_GROUP,LOG_##wLevel) || gGetLoggingLevel(__FILE__)>=LOG_##wLevel)
+#else
 #define IS_LOG_LEVEL(wLevel) (gGetLoggingLevel(__FILE__)>=LOG_##wLevel)
+#endif
 
 #ifdef NDEBUG
 #define LOG(wLevel) \
@@ -68,6 +82,8 @@
 // Use like this: int descriptive_name; LOG(INFO)<<LOGVAR(descriptive_name);
 #define LOGVAR2(name,val) " " << name << "=" << (val)
 #define LOGVAR(var) (" " #var "=") << var
+#define LOGVARM(var) " " << &#var[1] << "=" << var      // Strip the first char ("m") off the var name when printing.
+#define LOGVARP(var) (" " #var "=(") << var <<")"   // Put value in parens; used for classes.
 #define LOGHEX(var) (" " #var "=0x") << hex << ((unsigned)var) << dec
 #define LOGHEX2(name,val) " " << name << "=0x" << hex << ((unsigned)(val)) << dec
 // These are kind of cheesy, but you can use for bitvector
@@ -81,9 +97,16 @@
 
 #define LOG_ASSERT(x) { if (!(x)) LOG(EMERG) << "assertion " #x " failed"; } assert(x);
 
+// (pat) The WATCH and WATCHF macros print only to the console.  Pat uses them for debugging.
+// The WATCHINFO macro prints an INFO level message that is also printed to the console if the log level is DEBUG.
+// Beware that the arguments are evaluated multiple times.
+#define WATCHF(...) if (IS_LOG_LEVEL(DEBUG)) { printf("%s ",timestr(7).c_str()); printf(__VA_ARGS__); LOG(DEBUG)<<format(__VA_ARGS__); }
+#define WATCH(...) if (IS_LOG_LEVEL(DEBUG)) { std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl; LOG(DEBUG)<<__VA_ARGS__; }
+#define WATCHINFO(...) { if (IS_LOG_LEVEL(DEBUG)) { std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl; } LOG(INFO)<<__VA_ARGS__; }
 
-#include "Threads.h"		// must be after defines above, if these files are to be allowed to use LOG()
-#include "Utils.h"
+
+//#include "Threads.h"		// must be after defines above, if these files are to be allowed to use LOG()
+//#include "Utils.h"
 
 /**
 	A C++ stream-based thread-safe logger.
@@ -108,6 +131,8 @@ class Log {
 		:mPriority(wPriority), mDummyInit(false)
 	{ }
 
+	// (pat) This constructor is not used to construct a Log record, it is called once per application
+	// to init the syslog facility.  This is a very poor use of C++.
 	Log(const char* name, const char* level=NULL, int facility=LOG_USER);
 
 	// Most of the work is in the destructor.
@@ -119,12 +144,56 @@ class Log {
 extern bool gLogToConsole;	// Pat added for easy debugging.
 
 
+// (pat) Added logging by explicit group name.
+class LogGroup {
+	public:
+	// These must exactly match LogGroup::mGroupNames:
+	// That kinda sucks, but using static data prevents any constructor race.
+	enum Group {
+		Control,
+		SIP,
+		GSM,
+		GPRS,
+		Layer2,
+		_NumberOfLogGroups
+	};
+#if UNUSED
+	bool unsetGroup(const std::string groupName);
+	bool setGroup(const std::string groupName, const std::string levelName);
+#endif
+	void setAll();	// Update mDebugLevel from the Log.Group.... config database options.
+
+	uint8_t mDebugLevel[_NumberOfLogGroups];
+	LogGroup();
+	void LogGroupInit();
+	private:
+	static const char *mGroupNames[_NumberOfLogGroups+1];	// We add a NULL at the end.
+	Group groupNameToIndex(const char *) const;
+
+	//typedef std::map<std::string,Group> GroupMapType;
+	//GroupMapType mGroupNameToIndex;
+};
+extern LogGroup gLogGroup;
+
+// We inline this:
+static __inline__ bool gCheckGroupLogLevel(LogGroup::Group group, unsigned level) {
+	assert(group < LogGroup::_NumberOfLogGroups);
+	//_LOG(DEBUG) << LOGVAR(group)<<LOGVAR(level)<<LOGVAR2("stashed",(unsigned) gLogGroup.mDebugLevel[group]);
+	return gLogGroup.mDebugLevel[group] >= level;
+}
+
+
 
 std::list<std::string> gGetLoggerAlarms();		///< Get a copy of the recent alarm list.
 
 
 /**@ Global control and initialization of the logging system. */
 //@{
+
+
+/** Initialize the global logging system with filename  test  10*/
+void gLogInitWithFile(const char* name, const char* level, int facility, char* LogFilePath=NULL);
+
 /** Initialize the global logging system. */
 void gLogInit(const char* name, const char* level=NULL, int facility=LOG_USER);
 /** Get the logging level associated with a given file. */
@@ -133,6 +202,9 @@ int gGetLoggingLevel(const char *filename=NULL);
 void gLogEarly(int level, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 //@}
 
+// (pat) This is historical, some files include Logger.h and expect to get these too.  These should be removed.
+#include "Threads.h"		// must be after defines above, if these files are to be allowed to use LOG()
+#include "Utils.h"
 
 #endif
 

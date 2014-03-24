@@ -84,6 +84,12 @@ struct Double_z {
 	_INITIALIZED_SCALAR_FUNCS(Double_z,double,0)
 };
 
+template <class basetype>
+struct Enum_z {
+	basetype value;
+	_INITIALIZED_SCALAR_BASE_FUNCS(Enum_z,basetype,((basetype)0))
+};
+
 
 class ItemWithValueAndWidth {
 	public:

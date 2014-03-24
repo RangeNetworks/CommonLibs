@@ -24,37 +24,39 @@
 */
 
 
+#define ENABLE_VECTORDEBUG
 
 
 #include "BitVector.h"
 #include <iostream>
 #include <cstdlib>
+#include <string.h>
  
 using namespace std;
 
+// We must have a gConfig now to include BitVector.
+#include "Configuration.h"
+ConfigurationTable gConfig;
 
-int main(int argc, char *argv[])
+
+void origTest()
 {
-	BitVector v1("0000111100111100101011110000");
-	cout << v1 << endl;
+	BitVector v0("0000111100111100101011110000");
+	cout << v0 << endl;
+	// (pat) The conversion from a string was inserting garbage into the result BitVector.
+	// Fixed now so only 0 or 1 are inserted, but lets check:
+	for (char *cp = v0.begin(); cp < v0.end(); cp++) cout << (int)*cp<<" ";
+	cout << endl;
+
+	BitVector v1(v0);
 	v1.LSB8MSB();
-	cout << v1 << endl;
-	ViterbiR2O4 vCoder;
-	BitVector v2(v1.size()*2);
-	v1.encode(vCoder,v2);
-	cout << v2 << endl;
-	SoftVector sv2(v2);
-	cout << sv2 << endl;
-	for (unsigned i=0; i<sv2.size()/4; i++) sv2[random()%sv2.size()]=0.5;
-	cout << sv2 << endl;
-	BitVector v3(v1.size());
-	sv2.decode(vCoder,v3);
-	cout << v3 << endl;
+	cout <<v1 << " (byte swapped)" << endl;
 
-	cout << v3.segment(3,4) << endl;
-
-	BitVector v4(v3.segment(0,4),v3.segment(8,4));
-	cout << v4 << endl;
+	// Test operator==
+	assert(v1 == v1);
+	cout <<"v0="<<v0 <<endl;
+	cout <<"v1="<<v1 <<endl;
+	assert(!(v0 == v1));
 
 	BitVector v5("000011110000");
 	int r1 = v5.peekField(0,8);
@@ -70,14 +72,6 @@ int main(int argc, char *argv[])
 	v5.reverse8();
 	cout << v5 << endl;
 
-	BitVector mC = "000000000000111100000000000001110000011100001101000011000000000000000111000011110000100100001010000010100000101000001010000010100000010000000000000000000000000000000000000000000000001100001111000000000000000000000000000000000000000000000000000010010000101000001010000010100000101000001010000001000000000000000000000000110000111100000000000001110000101000001100000001000000000000";
-	SoftVector mCS(mC);
-	BitVector mU(mC.size()/2);
-	mCS.decode(vCoder,mU);
-	cout << "c=" << mCS << endl;
-	cout << "u=" << mU << endl;
-
-
 	unsigned char ts[9] = "abcdefgh";
 	BitVector tp(70);
 	cout << "ts=" << ts << endl;
@@ -85,4 +79,48 @@ int main(int argc, char *argv[])
 	cout << "tp=" << tp << endl;
 	tp.pack(ts);
 	cout << "ts=" << ts << endl;
+
+	BitVector v6("010101");
+	BitVector v7(3);
+	unsigned punk[3] = {1,2,5};
+	v6.copyPunctured(v7, punk, 3);
+	cout << "v7=" << v7 << endl;
+}
+
+
+typedef BitVector TestVector;
+int barfo;
+void foo(TestVector a)
+{
+	barfo = a.size();	// Do something so foo wont be optimized out.
+}
+void anotherTest()
+{
+	cout << "START BitVector anotherTest" << endl;
+	TestVector v0("0000111100111100101011110000");
+	TestVector atest = v0.head(3);
+	cout << atest << endl;
+	cout << "Calling head" << endl;
+	cout << v0.head(3) << endl;
+	cout << "Passing BitVector" << endl;
+	// This calls Vector const copy constructor.
+	// That is because the implicitly declared copy constructor for BitVector is of the form (BitVector const&)
+	foo(v0);
+	const TestVector ctest("0000");
+	cout << ctest.cloneSegment(0,2) << endl;
+	cout << "after"<<endl;
+	cout << "FINISH anotherTest" << endl;
+}
+
+BitVector randomBitVector(int n)
+{
+	BitVector t(n);
+	for (int i = 0; i < n; i++) t[i] = random()%2;
+	return t;
+}
+
+int main(int argc, char *argv[])
+{
+	anotherTest();
+	origTest();
 }

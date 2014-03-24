@@ -41,8 +41,7 @@ libcommon_la_SOURCES = \
 	Configuration.cpp \
 	sqlite3util.cpp \
 	URLEncode.cpp \
-	Utils.cpp \
-	A51.cpp
+	Utils.cpp
 
 noinst_PROGRAMS = \
 	BitVectorTest \
@@ -54,12 +53,12 @@ noinst_PROGRAMS = \
 	ConfigurationTest \
 	LogTest \
 	URLEncodeTest \
-	F16Test \
-	A51Test
+	F16Test
 
 #	ReportingTest 
 
 noinst_HEADERS = \
+	Defines.h \
 	BitVector.h \
 	Interthread.h \
 	LinkedLists.h \
@@ -74,8 +73,7 @@ noinst_HEADERS = \
 	URLEncode.h \
 	Utils.h \
 	Logger.h \
-	sqlite3util.h \
-	A51.h
+	sqlite3util.h
 
 URLEncodeTest_SOURCES = URLEncodeTest.cpp
 URLEncodeTest_LDADD = libcommon.la
@@ -84,11 +82,11 @@ BitVectorTest_SOURCES = BitVectorTest.cpp
 BitVectorTest_LDADD = libcommon.la $(SQLITE_LA)
 
 InterthreadTest_SOURCES = InterthreadTest.cpp
-InterthreadTest_LDADD = libcommon.la
+InterthreadTest_LDADD = libcommon.la $(SQLITE_LA)
 InterthreadTest_LDFLAGS = -lpthread
 
 SocketsTest_SOURCES = SocketsTest.cpp
-SocketsTest_LDADD = libcommon.la
+SocketsTest_LDADD = libcommon.la $(SQLITE_LA)
 SocketsTest_LDFLAGS = -lpthread
 
 TimevalTest_SOURCES = TimevalTest.cpp
@@ -110,9 +108,6 @@ LogTest_SOURCES = LogTest.cpp
 LogTest_LDADD = libcommon.la $(SQLITE_LA)
 
 F16Test_SOURCES = F16Test.cpp
-
-A51Test_SOURCES = A51Test.cpp
-A51Test_LDADD = libcommon.la
 
 MOSTLYCLEANFILES += testSource testDestination
 

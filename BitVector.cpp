@@ -1,5 +1,5 @@
 /*
-* Copyright 2008, 2009 Free Software Foundation, Inc.
+* Copyright 2008, 2009, 2014 Free Software Foundation, Inc.
 *
 *
 * This software is distributed under the terms of the GNU Affero Public License.
@@ -30,38 +30,26 @@
 #include <iostream>
 #include <stdio.h>
 #include <sstream>
+#include <string.h>
 
 using namespace std;
 
 
-/**
-  Apply a Galois polymonial to a binary seqeunce.
-  @param val The input sequence.
-  @param poly The polynomial.
-  @param order The order of the polynomial.
-  @return Single-bit result.
-*/
-unsigned applyPoly(uint64_t val, uint64_t poly, unsigned order)
-{
-	uint64_t prod = val & poly;
-	unsigned sum = prod;
-	for (unsigned i=1; i<order; i++) sum ^= prod>>i;
-	return sum & 0x01;
-}
-
-
-
-
-
 
 BitVector::BitVector(const char *valString)
-	:Vector<char>(strlen(valString))
 {
-	uint32_t accum = 0;
-	for (size_t i=0; i<size(); i++) {
-		accum <<= 1;
-		if (valString[i]=='1') accum |= 0x01;
-		mStart[i] = accum;
+	// 1-30-2013 pat: I dont know what this was intended to do, but it did not create a normalized BitVector,
+	// and it could even fail if the accum overlows 8 bits.
+	//uint32_t accum = 0;
+	//for (size_t i=0; i<size(); i++) {
+	//	accum <<= 1;
+	//	if (valString[i]=='1') accum |= 0x01;
+	//	mStart[i] = accum;
+	//}
+	vInit(strlen(valString));
+	char *rp = begin();
+	for (const char *cp = valString; *cp; cp++, rp++) {
+		*rp = (*cp == '1');
 	}
 }
 
@@ -217,31 +205,6 @@ uint64_t BitVector::parity(Generator& gen) const
 }
 
 
-void BitVector::encode(const ViterbiR2O4& coder, BitVector& target)
-{
-	size_t sz = size();
-	assert(sz*coder.iRate() == target.size());
-
-	// Build a "history" array where each element contains the full history.
-	uint32_t history[sz];
-	uint32_t accum = 0;
-	for (size_t i=0; i<sz; i++) {
-		accum = (accum<<1) | bit(i);
-		history[i] = accum;
-	}
-
-	// Look up histories in the pre-generated state table.
-	char *op = target.begin();
-	for (size_t i=0; i<sz; i++) {
-		unsigned index = coder.cMask() & history[i];
-		for (unsigned g=0; g<coder.iRate(); g++) {
-			*op++ = coder.stateTable(g,index);
-		}
-	}
-}
-
-
-
 unsigned BitVector::sum() const
 {
 	unsigned sum = 0;
@@ -285,121 +248,6 @@ ostream& operator<<(ostream& os, const BitVector& hv)
 }
 
 
-
-
-ViterbiR2O4::ViterbiR2O4()
-{
-	assert(mDeferral < 32);
-	mCoeffs[0] = 0x019;
-	mCoeffs[1] = 0x01b;
-	computeStateTables(0);
-	computeStateTables(1);
-	computeGeneratorTable();
-}
-
-
-
-
-void ViterbiR2O4::initializeStates()
-{
-	for (unsigned i=0; i<mIStates; i++) clear(mSurvivors[i]);
-	for (unsigned i=0; i<mNumCands; i++) clear(mCandidates[i]);
-}
-
-
-
-void ViterbiR2O4::computeStateTables(unsigned g)
-{
-	assert(g<mIRate);
-	for (unsigned state=0; state<mIStates; state++) {
-		// 0 input
-		uint32_t inputVal = state<<1;
-		mStateTable[g][inputVal] = applyPoly(inputVal, mCoeffs[g], mOrder+1);
-		// 1 input
-		inputVal |= 1;
-		mStateTable[g][inputVal] = applyPoly(inputVal, mCoeffs[g], mOrder+1);
-	}
-}
-
-void ViterbiR2O4::computeGeneratorTable()
-{
-	for (unsigned index=0; index<mIStates*2; index++) {
-		mGeneratorTable[index] = (mStateTable[0][index]<<1) | mStateTable[1][index];
-	}
-}
-
-
-
-
-
-
-void ViterbiR2O4::branchCandidates()
-{
-	// Branch to generate new input states.
-	const vCand *sp = mSurvivors;
-	for (unsigned i=0; i<mNumCands; i+=2) {
-		// extend and suffix
-		const uint32_t iState0 = (sp->iState) << 1;				// input state for 0
-		const uint32_t iState1 = iState0 | 0x01;				// input state for 1
-		const uint32_t oStateShifted = (sp->oState) << mIRate;	// shifted output
-		const float cost = sp->cost;
-		sp++;
-		// 0 input extension
-		mCandidates[i].cost = cost;
-		mCandidates[i].oState = oStateShifted | mGeneratorTable[iState0 & mCMask];
-		mCandidates[i].iState = iState0;
-		// 1 input extension
-		mCandidates[i+1].cost = cost;
-		mCandidates[i+1].oState = oStateShifted | mGeneratorTable[iState1 & mCMask];
-		mCandidates[i+1].iState = iState1;
-	}
-}
-
-
-void ViterbiR2O4::getSoftCostMetrics(const uint32_t inSample, const float *matchCost, const float *mismatchCost)
-{
-	const float *cTab[2] = {matchCost,mismatchCost};
-	for (unsigned i=0; i<mNumCands; i++) {
-		vCand& thisCand = mCandidates[i];
-		// We examine input bits 2 at a time for a rate 1/2 coder.
-		const unsigned mismatched = inSample ^ (thisCand.oState);
-		thisCand.cost += cTab[mismatched&0x01][1] + cTab[(mismatched>>1)&0x01][0];
-	}
-}
-
-
-void ViterbiR2O4::pruneCandidates()
-{
-	const vCand* c1 = mCandidates;					// 0-prefix
-	const vCand* c2 = mCandidates + mIStates;		// 1-prefix
-	for (unsigned i=0; i<mIStates; i++) {
-		if (c1[i].cost < c2[i].cost) mSurvivors[i] = c1[i];
-		else mSurvivors[i] = c2[i];
-	}
-}
-
-
-const ViterbiR2O4::vCand& ViterbiR2O4::minCost() const
-{
-	int minIndex = 0;
-	float minCost = mSurvivors[0].cost;
-	for (unsigned i=1; i<mIStates; i++) {
-		const float thisCost = mSurvivors[i].cost;
-		if (thisCost>=minCost) continue;
-		minCost = thisCost;
-		minIndex=i;
-	}
-	return mSurvivors[minIndex];
-}
-
-
-const ViterbiR2O4::vCand& ViterbiR2O4::step(uint32_t inSample, const float *probs, const float *iprobs)
-{
-	branchCandidates();
-	getSoftCostMetrics(inSample,probs,iprobs);
-	pruneCandidates();
-	return minCost();
-}
 
 
 uint64_t Parity::syndrome(const BitVector& receivedCodeword)
@@ -446,85 +294,6 @@ BitVector SoftVector::sliced() const
 
 
 
-void SoftVector::decode(ViterbiR2O4 &decoder, BitVector& target) const
-{
-	const size_t sz = size();
-	const unsigned deferral = decoder.deferral();
-	const size_t ctsz = sz + deferral*decoder.iRate();
-	assert(sz <= decoder.iRate()*target.size());
-
-	// Build a "history" array where each element contains the full history.
-	uint32_t history[ctsz];
-	{
-		BitVector bits = sliced();
-		uint32_t accum = 0;
-		for (size_t i=0; i<sz; i++) {
-			accum = (accum<<1) | bits.bit(i);
-			history[i] = accum;
-		}
-		// Repeat last bit at the end.
-		for (size_t i=sz; i<ctsz; i++) {
-			accum = (accum<<1) | (accum & 0x01);
-			history[i] = accum;
-		}
-	}
-
-	// Precompute metric tables.
-	float matchCostTable[ctsz];
-	float mismatchCostTable[ctsz];
-	{
-		const float *dp = mStart;
-		for (size_t i=0; i<sz; i++) {
-			// pVal is the probability that a bit is correct.
-			// ipVal is the probability that a bit is incorrect.
-			float pVal = dp[i];
-			if (pVal>0.5F) pVal = 1.0F-pVal;
-			float ipVal = 1.0F-pVal;
-			// This is a cheap approximation to an ideal cost function.
-			if (pVal<0.01F) pVal = 0.01;
-			if (ipVal<0.01F) ipVal = 0.01;
-			matchCostTable[i] = 0.25F/ipVal;
-			mismatchCostTable[i] = 0.25F/pVal;
-		}
-	
-		// pad end of table with unknowns
-		for (size_t i=sz; i<ctsz; i++) {
-			matchCostTable[i] = 0.5F;
-			mismatchCostTable[i] = 0.5F;
-		}
-	}
-
-	{
-		decoder.initializeStates();
-		// Each sample of history[] carries its history.
-		// So we only have to process every iRate-th sample.
-		const unsigned step = decoder.iRate();
-		// input pointer
-		const uint32_t *ip = history + step - 1;
-		// output pointers
-		char *op = target.begin();
-		const char *const opt = target.end();
-		// table pointers
-		const float* match = matchCostTable;
-		const float* mismatch = mismatchCostTable;
-		size_t oCount = 0;
-		while (op<opt) {
-			// Viterbi algorithm
-			assert(match-matchCostTable<sizeof(matchCostTable)/sizeof(matchCostTable[0])-1);
-			assert(mismatch-mismatchCostTable<sizeof(mismatchCostTable)/sizeof(mismatchCostTable[0])-1);
-			const ViterbiR2O4::vCand &minCost = decoder.step(*ip, match, mismatch);
-			ip += step;
-			match += step;
-			mismatch += step;
-			// output
-			if (oCount>=deferral) *op++ = (minCost.iState >> deferral)&0x01;
-			oCount++;
-		}
-	}
-}
-
-
-
 // (pat) Added 6-22-2012
 float SoftVector::getEnergy(float *plow) const
 {
@@ -539,6 +308,36 @@ float SoftVector::getEnergy(float *plow) const
 	}
 	if (plow) { *plow = low; }
 	return avg;
+}
+
+// (pat) Added 1-2014.  Compute SNR of a soft vector.  Very similar to above.
+// Since we dont really know what the expected signal values are, we will assume that the signal is 0 or 1
+// and return the SNR on that basis.
+// SNR is power(signal) / power(noise) where power can be calculated as (RMS(signal) / RMS(noise))**2 of the values.
+// Since RMS is square-rooted, ie RMS = sqrt(1/n * (x1**2 + x2**2 ...)), we just add up the squares.
+// To compute RMS of the signal we will remove any constant offset, so the signal values are either 0.5 or -0.5,
+// so the RMS of the signal is just 0.5**2 * len;  all we need to compute is the noise component.
+float SoftVector::getSNR() const
+{
+	float sumSquaresNoise = 0;
+	const SoftVector &vec = *this;
+	int len = vec.size();
+	if (len == 0) { return 0.0; }
+	for (int i = 0; i < len; i++) {
+		float bit = vec[i];
+		if (bit < 0.5) {
+			// Assume signal is 0.
+			sumSquaresNoise += (bit - 0.0) * (bit - 0.0);
+		} else {
+			// Assume signal is 1.
+			sumSquaresNoise += (bit - 1.0) * (bit - 1.0);
+		}
+	}
+	float sumSquaresSignal = 0.5 * 0.5 * len;
+	// I really want log10 of this to convert to dB, but log is expensive, and Harvind seems to like absolute SNR.
+	// Clamp max to 999; it shouldnt get up there but be sure.  This also avoids divide by zero.
+	if (sumSquaresNoise * 1000 < sumSquaresSignal) return 999;
+	return sumSquaresSignal / sumSquaresNoise;
 }
 
 
@@ -620,6 +419,62 @@ bool BitVector::unhex(const char* src)
 		fillField(whole,val,rem);
 	}
 	return true;
+}
+
+bool BitVector::operator==(const BitVector &other) const
+{
+	unsigned l = size();
+	return l == other.size() && 0==memcmp(begin(),other.begin(),l);
+}
+
+void BitVector::copyPunctured(BitVector &dst, const unsigned *puncture, const size_t plth)
+{
+	assert(size() - plth == dst.size());
+	char *srcp = mStart;
+	char *dstp = dst.mStart;
+	const unsigned *pend = puncture + plth;
+	while (srcp < mEnd) {
+		if (puncture < pend) {
+			int n = (*puncture++) - (srcp - mStart);
+			assert(n >= 0);
+			for (int i = 0; i < n; i++) {
+				assert(srcp < mEnd && dstp < dst.mEnd);
+				*dstp++ = *srcp++;
+			}
+			srcp++;
+		} else {
+			while (srcp < mEnd) {
+				assert(dstp < dst.mEnd);
+				*dstp++ = *srcp++;
+			}
+		}
+	}
+	assert(dstp == dst.mEnd && puncture == pend);
+}
+
+void SoftVector::copyUnPunctured(SoftVector &dst, const unsigned *puncture, const size_t plth)
+{
+	assert(size() + plth == dst.size());
+	float *srcp = mStart;
+	float *dstp = dst.mStart;
+	const unsigned *pend = puncture + plth;
+	while (dstp < dst.mEnd) {
+		if (puncture < pend) {
+			int n = (*puncture++) - (dstp - dst.mStart);
+			assert(n >= 0);
+			for (int i = 0; i < n; i++) {
+				assert(srcp < mEnd && dstp < dst.mEnd);
+				*dstp++ = *srcp++;
+			}
+			*dstp++ = 0.5;
+		} else {
+			while (srcp < mEnd) {
+				assert(dstp < dst.mEnd);
+				*dstp++ = *srcp++;
+			}
+		}
+	}
+	assert(dstp == dst.mEnd && puncture == pend);
 }
 
 // vim: ts=4 sw=4

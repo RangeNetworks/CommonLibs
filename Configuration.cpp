@@ -1,7 +1,7 @@
 /*
 * Copyright 2008, 2009, 2010 Free Software Foundation, Inc.
 * Copyright 2010 Kestrel Signal Processing, Inc.
-* Copyright 2011, 2012 Range Networks, Inc.
+* Copyright 2011, 2012, 2014 Range Networks, Inc.
 *
 *
 * This software is distributed under the terms of the GNU Affero Public License.
@@ -28,10 +28,16 @@
 
 #include "Configuration.h"
 #include "Logger.h"
+#include "Utils.h"
 #include <fstream>
 #include <iostream>
 #include <string.h>
 
+#ifdef DEBUG_CONFIG
+#define	debugLogEarly gLogEarly
+#else
+#define	debugLogEarly(...)
+#endif
 
 using namespace std;
 
@@ -47,12 +53,43 @@ static const char* createConfigTable = {
 	")"
 };
 
+// (pat) LOG() may not be initialized yet, so use syslog directly.
+#define LOGNOW(fmt,...) syslog(LOG_ERR, "ERR %s:" fmt,Utils::timestr().c_str(),__VA_ARGS__)
+
+
+long ConfigurationRecord::number() const
+{
+	if (mValue.size() == 0 && ! mCRWarned) {
+		LOGNOW("request for configuration key '%s' as number: configuration value is null", mCRKey.c_str());
+		mCRWarned = true;
+		return 0;
+	}
+	char *endptr;
+	long result = strtol(mValue.c_str(),&endptr,0);
+	if (*endptr && ! mCRWarned) {
+		// (pat) Warn if the number is invalid.
+		LOGNOW("request for configuration key '%s' as number: value could not be fully converted: '%s'", mCRKey.c_str(),mValue.c_str());
+		mCRWarned = true;
+	}
+	return result;
+}
 
 
 float ConfigurationRecord::floatNumber() const
 {
-	float val;
-	sscanf(mValue.c_str(),"%f",&val);
+	if (mValue.size() == 0 && ! mCRWarned) {
+		LOGNOW("request for configuration key '%s' as float number: configuration value is null", mCRKey.c_str());
+		mCRWarned = true;
+		return 0;
+	}
+	//sscanf(mValue.c_str(),"%f",&val);
+	char *endptr;
+	float val = strtof(mValue.c_str(),&endptr);
+	if (*endptr && ! mCRWarned) {
+		// (pat) Warn if the number is invalid.
+		LOGNOW("request for configuration key '%s' as float number: value could not be fully converted: '%s'", mCRKey.c_str(),mValue.c_str());
+		mCRWarned = true;
+	}
 	return val;
 }
 
@@ -78,10 +115,12 @@ ConfigurationTable::ConfigurationTable(const char* filename, const char *wCmdNam
 	if (!sqlite3_command(mDB,createConfigTable)) {
 		gLogEarly(LOG_EMERG, "cannot create configuration table in database at %s, error message: %s", filename, sqlite3_errmsg(mDB));
 	}
+
+	// Pat and David both do not want to use WAL mode on the config databases.
 	// Set high-concurrency WAL mode.
-	if (!sqlite3_command(mDB,enableWAL)) {
-		gLogEarly(LOG_EMERG, "cannot enable WAL mode on database at %s, error message: %s", filename, sqlite3_errmsg(mDB));
-	}
+	//if (!sqlite3_command(mDB,enableWAL)) {
+	//	gLogEarly(LOG_EMERG, "cannot enable WAL mode on database at %s, error message: %s", filename, sqlite3_errmsg(mDB));
+	//}
 
 	// Build CommonLibs schema
 	ConfigurationKey *tmp;
@@ -144,6 +183,32 @@ ConfigurationTable::ConfigurationTable(const char* filename, const char *wCmdNam
 
 	// Init the cross checking callback to something predictable
 	mCrossCheck = NULL;
+
+#define DUMP_CONFIGURATION_TABLE 1
+#if DUMP_CONFIGURATION_TABLE
+	// (pat) Dump any non-default config variables...
+	try {
+		if (wCmdName == NULL) { wCmdName = ""; }
+		LOG(INFO) << wCmdName << ":" << " List of non-default config parameters:";
+		string snippet("");
+		ConfigurationKeyMap view = getSimilarKeys(snippet);
+		for (ConfigurationKeyMap::iterator it = view.begin(); it != view.end(); it++) {
+			string name = it->first;
+			ConfigurationKey key = it->second;
+			if (name != key.getName()) {
+				LOG(ALERT) << "SQL database is corrupt at name:"<<name <<" !=  key:"<<key.getName();
+			}
+			string defaultValue= key.getDefaultValue();
+			string value = this->getStr(name);
+			if (value != defaultValue) {
+				LOG(INFO) << "Config Variable"<<LOGVAR(name) <<LOGVAR(value) <<LOGVAR(defaultValue);
+			}
+		}
+	} catch (...) {
+		LOG(INFO) << wCmdName << ":" << " EXCEPTION CAUGHT";
+	}
+#endif
+
 }
 
 string ConfigurationTable::getDefaultSQL(const std::string& program, const std::string& version)
@@ -159,7 +224,7 @@ string ConfigurationTable::getDefaultSQL(const std::string& program, const std::
 	ss << "-- rather in the program's ConfigurationKey schema." << endl;
 	ss << "--" << endl;
 	ss << "PRAGMA foreign_keys=OFF;" << endl;
-	ss << "PRAGMA journal_mode=WAL;" << endl;
+	//ss << "PRAGMA journal_mode=WAL;" << endl;
 	ss << "BEGIN TRANSACTION;" << endl;
 	ss << "CREATE TABLE IF NOT EXISTS CONFIG ( KEYSTRING TEXT UNIQUE NOT NULL, VALUESTRING TEXT, STATIC INTEGER DEFAULT 0, OPTIONAL INTEGER DEFAULT 0, COMMENTS TEXT DEFAULT '');" << endl;
 
@@ -180,7 +245,11 @@ string ConfigurationTable::getDefaultSQL(const std::string& program, const std::
 			// optional
 			ss << "0,";
 			// description
-			ss << "'";
+			const string description = mp->second.getDescription();
+			// Try to use a quote that will work: if the description contains ' quote with " else '.
+			// This is not perfect because these quotes could themselves be quoted.
+			const char * quote = string::npos != description.find('\'') ? "\"" : "'";
+			ss << quote;
 			if (mp->second.getType() == ConfigurationKey::BOOLEAN) {
 				ss << "1=enabled, 0=disabled - ";
 			}
@@ -188,7 +257,7 @@ string ConfigurationTable::getDefaultSQL(const std::string& program, const std::
 			if (mp->second.isStatic()) {
 				ss << "  Static.";
 			}
-			ss << "'";
+			ss << quote;
 		ss << ");" << endl;
 		mp++;
 	}
@@ -208,15 +277,15 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 	ss << "% -- these sections were generated using: " << program << " --gentex" << endl;
 	ss << "% -- binary version: " << version << endl;
 
-	ss << "\\subsection{Customer Site Parameters}" << endl;
+	ss << "\\section{Customer Site Parameters}" << endl;
 	ss << "These parameters must be changed to fit your site." << endl;
 	ss << "\\begin{itemize}" << endl;
 	mp = mSchema.begin();
 	while (mp != mSchema.end()) {
 		if (mp->second.getVisibility() == ConfigurationKey::CUSTOMERSITE) {
-			ss << "	\\item ";
+			ss << "	\\item \\texttt{";
 				// name
-				ss << mp->first << " -- ";
+				ss << mp->first << "} -- ";
 				// description
 				ss << mp->second.getDescription();
 			ss << endl;
@@ -226,7 +295,7 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 	ss << "\\end{itemize}" << endl;
 	ss << endl;
 
-	ss << "\\subsection{Customer Tuneable Parameters}" << endl;
+	ss << "\\section{Customer Tuneable Parameters}" << endl;
 	ss << "These parameters can be changed to optimize your site." << endl;
 	ss << "\\begin{itemize}" << endl;
 	mp = mSchema.begin();
@@ -237,9 +306,9 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 				mp->second.getVisibility() == ConfigurationKey::CUSTOMERTUNE ||
 				mp->second.getVisibility() == ConfigurationKey::CUSTOMERWARN
 			)) {
-			ss << "	\\item ";
+			ss << "	\\item \\texttt{";
 				// name
-				ss << mp->first << " -- ";
+				ss << mp->first << "} -- ";
 				// description
 				ss << mp->second.getDescription();
 			ss << endl;
@@ -249,16 +318,16 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 	ss << "\\end{itemize}" << endl;
 	ss << endl;
 
-	ss << "\\subsection{Developer/Factory Parameters}" << endl;
+	ss << "\\section{Developer/Factory Parameters}" << endl;
 	ss << "These parameters should only be changed by when developing new code." << endl;
 	ss << "\\begin{itemize}" << endl;
 	mp = mSchema.begin();
 	while (mp != mSchema.end()) {
 		if (mp->second.getVisibility() == ConfigurationKey::FACTORY ||
 			mp->second.getVisibility() == ConfigurationKey::DEVELOPER) {
-			ss << "	\\item ";
+			ss << "	\\item \\texttt{";
 				// name
-				ss << mp->first << " -- ";
+				ss << mp->first << "} -- ";
 				// description
 				ss << mp->second.getDescription();
 			ss << endl;
@@ -374,6 +443,46 @@ bool ConfigurationTable::isValidValue(const std::string& name, const std::string
 				ret = true;
 			}
 			regfree(&r);
+			break;
+		}
+
+		case ConfigurationKey::HOSTANDPORT_OPT: {
+			if (val.length() == 0) {
+				ret = true;
+				break;
+			}
+		}
+		case ConfigurationKey::HOSTANDPORT: {
+			uint delimiter;
+			std::string host;
+			int port = -1;
+			bool validHost = false;
+
+			delimiter = val.find(':');
+			if (delimiter != std::string::npos) {
+				host = val.substr(0, delimiter);
+				std::stringstream(val.substr(delimiter+1)) >> port;
+				if (ConfigurationKey::isValidIP(host)) {
+					validHost = true;
+				} else {
+					regex_t r;
+					const char* expression = "^[a-zA-Z0-9_.-]+$";
+					int result = regcomp(&r, expression, REG_EXTENDED);
+					if (result) {
+						char msg[256];
+						regerror(result,&r,msg,255);
+						break;//abort();
+					}
+					if (regexec(&r, host.c_str(), 0, NULL, 0)==0) {
+						validHost = true;
+					}
+					regfree(&r);
+				}
+
+				if (validHost && 1 <= port && port <= 65535) {
+					ret = true;
+				}
+			}
 			break;
 		}
 
@@ -553,13 +662,13 @@ const ConfigurationRecord& ConfigurationTable::lookup(const string& key)
 
 	// value found, cache the result
 	if (value) {
-		mCache[key] = ConfigurationRecord(value);
+		mCache[key] = ConfigurationRecord(key,value);
 	// key definition found, cache the default
 	} else if (keyDefinedInSchema(key)) {
-		mCache[key] = ConfigurationRecord(mSchema[key].getDefaultValue());
+		mCache[key] = ConfigurationRecord(key,mSchema[key].getDefaultValue());
 	// total miss, cache the error
 	} else {
-		mCache[key] = ConfigurationRecord(false);
+		mCache[key] = ConfigurationRecord(key,false);
 		throw ConfigurationTableKeyNotFound(key);
 	}
 
@@ -749,9 +858,11 @@ ConfigurationRecordMap ConfigurationTable::getAllPairs() const
 		const char* key = (const char*)sqlite3_column_text(stmt,0);
 		const char* value = (const char*)sqlite3_column_text(stmt,1);
 		if (key && value) {
-			tmp[string(key)] = ConfigurationRecord(value);
+			string skey(key);
+			tmp[skey] = ConfigurationRecord(skey,value);
 		} else if (key && !value) {
-			tmp[string(key)] = ConfigurationRecord(false);
+			string skey(key);
+			tmp[skey] = ConfigurationRecord(skey,false);
 		}
 		src = sqlite3_run_query(mDB,stmt);
 	}
@@ -773,7 +884,7 @@ bool ConfigurationTable::set(const string& key, const string& value)
 	
 	bool success = sqlite3_command(mDB,cmd.c_str());
 	// Cache the result.
-	if (success) mCache[key] = ConfigurationRecord(value);
+	if (success) mCache[key] = ConfigurationRecord(key,value);
 	return success;
 }
 
@@ -944,55 +1055,6 @@ template<class T> bool ConfigurationKey::isInValRange(const ConfigurationKey &ke
 	return ret;
 }
 
-const std::string ConfigurationKey::getARFCNsString() {
-	stringstream ss;
-	int i;
-	float downlink;
-	float uplink;
-
-	// 128:251 GSM850
-	downlink = 869.2;
-	uplink = 824.2;
-	for (i = 128; i <= 251; i++) {
-		ss << i << "|GSM850 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
-	}
-
-	// 0:124 EGSM900
-	downlink = 935.0;
-	uplink = 890.0;
-	for (i = 0; i <= 124; i++) {
-		ss << i << "|PGSM900 #" << i << " : " << (downlink + (0.2*i)) << " MHz downlink / " << (uplink + (0.2*i)) << " MHz uplink,";
-	}
-	// 975:1023 EGSM900
-	for (i = 975; i <= 1023 ; i++) {
-		ss << i << "|PGSM900 #" << i << " : " << (downlink + (0.2*i)) << " MHz downlink / " << (uplink + (0.2*i)) << " MHz uplink,";
-	}
-
-	// 512:885 DCS1800
-	downlink = 1805.2;
-	uplink = 1710.2;
-	for (i = 512; i <= 885; i++) {
-		ss << i << "|DCS1800 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
-	}
-
-	// 512:810 PCS1900
-	downlink = 1930.2;
-	uplink = 1850.2;
-	for (i = 512; i <= 810; i++) {
-		ss << i << "|PCS1900 #" << i << " : " << downlink << " MHz downlink / " << uplink << " MHz uplink,";
-		downlink += 0.2;
-		uplink += 0.2;
-	}
-
-	ss << endl;
-
-	return ss.str();
-}
-
 const std::string ConfigurationKey::visibilityLevelToString(const ConfigurationKey::VisibilityLevel& visibility) {
 	std::string ret = "UNKNOWN ERROR";
 
@@ -1044,6 +1106,12 @@ const std::string ConfigurationKey::typeToString(const ConfigurationKey::Type& t
 			break;
 		case FILEPATH:
 			ret = "file path";
+			break;
+		case HOSTANDPORT_OPT:
+			ret = "hostname or IP address and port (optional)";
+			break;
+		case HOSTANDPORT:
+			ret = "hostname or IP address and port";
 			break;
 		case IPADDRESS_OPT:
 			ret = "IP address (optional)";
@@ -1101,6 +1169,7 @@ void ConfigurationKey::printKey(const ConfigurationKey &key, const std::string& 
 
 void ConfigurationKey::printDescription(const ConfigurationKey &key, ostream& os) {
 	std::string tmp;
+	unsigned scope;
 
 	os << " - description:      " << key.getDescription() << std::endl;
 	if (key.getUnits().length()) {
@@ -1154,6 +1223,28 @@ void ConfigurationKey::printDescription(const ConfigurationKey &key, ostream& os
 
 	} else if (key.getValidValues().length()) {
 		os << " - raw valid values: " << tmp << std::endl;
+	}
+
+	scope = key.getScope();
+	if (scope) {
+		if (scope & ConfigurationKey::GLOBALLYUNIQUE) {
+			os << " - scope:            value must be unique across all nodes" << std::endl;
+		}
+		if (scope & ConfigurationKey::GLOBALLYSAME) {
+			os << " - scope:            value must be the same across all nodes" << std::endl;
+		}
+		if (scope & ConfigurationKey::NEIGHBORSUNIQUE) {
+			os << " - scope:            value must be unique across all neighbors" << std::endl;
+		}
+		if (scope & ConfigurationKey::NEIGHBORSSAME) {
+			os << " - scope:            value must be the same across all neighbors" << std::endl;
+		}
+		if (scope & ConfigurationKey::NEIGHBORSSAME) {
+			os << " - scope:            must be the same across all neighbors" << std::endl;
+		}
+		if (scope & ConfigurationKey::NODESPECIFIC) {
+			os << " - scope:            specfic to each individual node" << std::endl;
+		}
 	}
 }
 

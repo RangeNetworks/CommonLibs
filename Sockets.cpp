@@ -1,5 +1,5 @@
 /*
-* Copyright 2008, 2010 Free Software Foundation, Inc.
+* Copyright 2008, 2010, 2014 Free Software Foundation, Inc.
 *
 *
 * This software is distributed under the terms of the GNU Affero Public License.
@@ -33,6 +33,7 @@
 
 #include "Threads.h"
 #include "Sockets.h"
+#include "Logger.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -42,6 +43,9 @@
 
 
 
+SocketError::SocketError() {
+	LOG(DEBUG) << "SocketError";
+}
 
 
 
@@ -51,7 +55,10 @@ bool resolveAddress(struct sockaddr_in *address, const char *hostAndPort)
 	assert(hostAndPort);
 	char *copy = strdup(hostAndPort);
 	char *colon = strchr(copy,':');
-	if (!colon) return false;
+	if (!colon) {
+		LOG(WARNING) << "missing port number in:"<<hostAndPort;
+		return false;
+	}
 	*colon = '\0';
 	char *host = copy;
 	unsigned port = strtol(colon+1,NULL,10);
@@ -74,7 +81,8 @@ bool resolveAddress(struct sockaddr_in *address, const char *host, unsigned shor
 	// There are different flavors of gethostbyname_r(), but
 	// latest Linux use the following form:
 	if (gethostbyname2_r(host, AF_INET, &hostData, tmpBuffer, sizeof(tmpBuffer), &hp, &h_errno_local)!=0) {
-		CERR("WARNING -- gethostbyname2_r() failed for " << host << ", " << hstrerror(h_errno_local));
+		LOG(WARNING) << "gethostbyname2_r() failed for " << host << ", " << hstrerror(h_errno_local);
+		//CERR("WARNING -- gethostbyname2_r() failed for " << host << ", " << hstrerror(h_errno_local));
 		return false;
 	}
 #else
@@ -89,14 +97,14 @@ bool resolveAddress(struct sockaddr_in *address, const char *host, unsigned shor
 	sGethostbynameMutex.unlock();
 #endif
  	if (hp==NULL) {
-		CERR("WARNING -- gethostbyname() failed for " << host << ", " << hstrerror(h_errno_local));
+		LOG(WARNING) << "gethostbyname() failed for " << host << ", " << hstrerror(h_errno_local);
 		return false;
 	}
 	if (hp->h_addrtype != AF_INET) {
-		CERR("WARNING -- gethostbyname() resolved " << host << " to something other then AF_INET");
+		LOG(WARNING) << "gethostbyname() resolved " << host << " to something other then AF_INET";
  		return false;
  	}
-	address->sin_family = hp->h_addrtype;
+	address->sin_family = hp->h_addrtype;		// Above guarantees it is AF_INET
 	assert(sizeof(address->sin_addr) == hp->h_length);
 	memcpy(&(address->sin_addr), hp->h_addr_list[0], hp->h_length);
 	address->sin_port = htons(port);
@@ -141,7 +149,7 @@ DatagramSocket::~DatagramSocket()
 
 int DatagramSocket::write( const char * message, size_t length )
 {
-	assert(length<=MAX_UDP_LENGTH);
+	//assert(length<=MAX_UDP_LENGTH);	// (pat 8-2013) Removed on David's orders.
 	int retVal = sendto(mSocketFD, message, length, 0,
 		(struct sockaddr *)mDestination, addressSize());
 	if (retVal == -1 ) perror("DatagramSocket::write() failed");
@@ -150,7 +158,7 @@ int DatagramSocket::write( const char * message, size_t length )
 
 int DatagramSocket::writeBack( const char * message, size_t length )
 {
-	assert(length<=MAX_UDP_LENGTH);
+	//assert(length<=MAX_UDP_LENGTH);	// (pat 8-2013) Removed on David's orders.
 	int retVal = sendto(mSocketFD, message, length, 0,
 		(struct sockaddr *)mSource, addressSize());
 	if (retVal == -1 ) perror("DatagramSocket::write() failed");
@@ -175,7 +183,9 @@ int DatagramSocket::writeBack( const char * message)
 
 int DatagramSocket::send(const struct sockaddr* dest, const char * message, size_t length )
 {
-	assert(length<=MAX_UDP_LENGTH);
+	// (pat 8-2013) Dont assert!
+	// assert(length<=MAX_UDP_LENGTH);
+	// sendto is supposed to return an error if the packet is too long.
 	int retVal = sendto(mSocketFD, message, length, 0, dest, addressSize());
 	if (retVal == -1 ) perror("DatagramSocket::send() failed");
 	return retVal;
@@ -272,7 +282,9 @@ void UDPSocket::open(unsigned short localPort)
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(localPort);
 	if (bind(mSocketFD,(struct sockaddr*)&address,length)<0) {
-		perror("bind() failed");
+		char buf[100];
+		sprintf(buf,"bind(port %d) failed",localPort);
+		perror(buf);
 		throw SocketError();
 	}
 }
@@ -318,7 +330,9 @@ void UDDSocket::open(const char* localPath)
 	strcpy(address.sun_path,localPath);
 	unlink(localPath);
 	if (bind(mSocketFD,(struct sockaddr*)&address,length)<0) {
-		perror("bind() failed");
+		char buf[1100];
+		sprintf(buf,"bind(path %s) failed",localPath);
+		perror(buf);
 		throw SocketError();
 	}
 }

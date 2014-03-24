@@ -1,7 +1,7 @@
 /*
 * Copyright 2009, 2010 Free Software Foundation, Inc.
 * Copyright 2010 Kestrel Signal Processing, Inc.
-* Copyright 2011, 2012 Range Networks, Inc.
+* Copyright 2011, 2012, 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -69,35 +69,45 @@ class ConfigurationTableKeyNotFound : public ConfigurationTableError {
 };
 
 
+// (pat) 10-5-2013 Add the key to this record so we can print better error messages,
+// and warn if number() of floatNumber() have non-numeric values.
 class ConfigurationRecord {
 
 	private:
 
+	std::string mCRKey;
 	std::string mValue;
-	long mNumber;
 	bool mDefined;
+	mutable bool mCRWarned;
 
 	public:
 
-	ConfigurationRecord(bool wDefined=true):
-		mDefined(wDefined)
+	ConfigurationRecord() : mDefined(false), mCRWarned(false) {}
+	ConfigurationRecord(const std::string &key,bool wDefined):
+		mCRKey(key),
+		mDefined(wDefined),
+		mCRWarned(false)
 	{ }
 
-	ConfigurationRecord(const std::string& wValue):
+	ConfigurationRecord(const std::string&key, const std::string& wValue):
+		mCRKey(key),
 		mValue(wValue),
-		mNumber(strtol(wValue.c_str(),NULL,0)),
-		mDefined(true)
+		//mNumber(strtol(wValue.c_str(),&endptr,0)),
+		mDefined(true),
+		mCRWarned(false)
 	{ }
 
-	ConfigurationRecord(const char* wValue):
+	ConfigurationRecord(const std::string&key, const char* wValue):
+		mCRKey(key),
 		mValue(std::string(wValue)),
-		mNumber(strtol(wValue,NULL,0)),
-		mDefined(true)
+		//mNumber(strtol(wValue.c_str(),&endptr,0)),
+		mDefined(true),
+		mCRWarned(false)
 	{ }
 
 
 	const std::string& value() const { return mValue; }
-	long number() const { return mNumber; }
+	long number() const;
 	bool defined() const { return mDefined; }
 
 	float floatNumber() const;
@@ -193,6 +203,7 @@ class ConfigurationTable {
 
 	ConfigurationKeyMap mSchema;///< definition of configuration default values and validation logic
 
+	// (pat) filename is the sql file name, wCmdName is the name of the executable we are running, used for better error messages.
 	ConfigurationTable(const char* filename = ":memory:", const char *wCmdName = 0, ConfigurationKeyMap wSchema = ConfigurationKeyMap());
 
 	/** Generate an up-to-date example sql file for new installs. */
@@ -350,6 +361,8 @@ class ConfigurationKey {
 		CIDR,
 		FILEPATH_OPT,
 		FILEPATH,
+		HOSTANDPORT_OPT,
+		HOSTANDPORT,
 		IPADDRESS_OPT,
 		IPADDRESS,
 		IPANDPORT,
@@ -361,7 +374,17 @@ class ConfigurationKey {
 		REGEX,
 		STRING_OPT,
 		STRING,
-		VALRANGE
+		VALRANGE 		// (pat) string format is: <min_value> ':' <max_value> [ '(' <step> ')' ]
+						// step is not currently enforced.
+	};
+
+	enum Scope
+	{
+		GLOBALLYUNIQUE = 1,
+		GLOBALLYSAME = 2,
+		NEIGHBORSUNIQUE = 4,
+		NEIGHBORSSAME = 8,
+		NODESPECIFIC = 16
 	};
 
 	private:
@@ -374,11 +397,12 @@ class ConfigurationKey {
 	std::string mValidValues;
 	bool mIsStatic;
 	std::string mDescription;
+	unsigned mScope;
 
 
 	public:
 
-	ConfigurationKey(const std::string& wName, const std::string& wDefaultValue, const std::string& wUnits, const VisibilityLevel wVisibility, const Type wType, const std::string& wValidValues, bool wIsStatic, const std::string& wDescription):
+	ConfigurationKey(const std::string& wName, const std::string& wDefaultValue, const std::string& wUnits, const VisibilityLevel wVisibility, const Type wType, const std::string& wValidValues, bool wIsStatic, const std::string& wDescription, unsigned wScope = 0):
 		mName(wName),
 		mDefaultValue(wDefaultValue),
 		mUnits(wUnits),
@@ -386,7 +410,8 @@ class ConfigurationKey {
 		mType(wType),
 		mValidValues(wValidValues),
 		mIsStatic(wIsStatic),
-		mDescription(wDescription)
+		mDescription(wDescription),
+		mScope(wScope)
 	{ }
 
 	ConfigurationKey()
@@ -396,12 +421,14 @@ class ConfigurationKey {
 	const std::string& getDefaultValue() const { return mDefaultValue; }
 	void updateDefaultValue(const std::string& newValue) { mDefaultValue = newValue; }
 	void updateDefaultValue(const int newValue) { std::stringstream ss; ss << newValue; updateDefaultValue(ss.str()); }
+	void updateValidValues(const std::string& newValue) { mValidValues = newValue; }
 	const std::string& getUnits() const { return mUnits; }
 	const VisibilityLevel& getVisibility() const { return mVisibility; }
 	const Type& getType() const { return mType; }
 	const std::string& getValidValues() const { return mValidValues; }
 	bool isStatic() const { return mIsStatic; }
 	const std::string& getDescription() const { return mDescription; }
+	unsigned getScope() const { return mScope; }
 
 	static bool isValidIP(const std::string& ip);
 	static void getMinMaxStepping(const ConfigurationKey &key, std::string &min, std::string &max, std::string &stepping);
@@ -410,7 +437,6 @@ class ConfigurationKey {
 	static const std::string typeToString(const ConfigurationKey::Type& type);
 	static void printKey(const ConfigurationKey &key, const std::string& currentValue, std::ostream& os);
 	static void printDescription(const ConfigurationKey &key, std::ostream& os);
-	static const std::string getARFCNsString();
 };
 
 

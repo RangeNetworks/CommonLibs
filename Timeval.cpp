@@ -29,7 +29,7 @@
 
 using namespace std;
 
-void Timeval::future(unsigned offset)
+void Timeval::future(unsigned offset)	// In msecs
 {
 	now();
 	unsigned sec = offset/1000;

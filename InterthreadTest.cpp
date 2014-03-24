@@ -28,6 +28,8 @@
 #include "Threads.h"
 #include "Interthread.h"
 #include <iostream>
+#include "Configuration.h"
+ConfigurationTable gConfig;
 
 using namespace std;
 
