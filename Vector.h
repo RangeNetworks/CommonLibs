@@ -340,7 +340,7 @@ template <class T> class Vector : public VectorBase<T>
 	/** Build a Vector by concatenation. */
 	Vector(const Vector<T>& other1, const Vector<T>& other2):VectorBase<T>() {
 		assert(this->mData == 0);
-		vConcat(other1,other2);
+		this->vConcat(other1,other2);
 	}
 
 	//@{
