@@ -30,14 +30,12 @@
 #include <iostream>
 #include <string>
 
-using namespace std;
-
 ConfigurationKeyMap getConfigurationKeys();
 ConfigurationTable gConfig("exampleconfig.db","test", getConfigurationKeys());
 
 void purgeConfig(void*,int,char const*, char const*, sqlite3_int64)
 {
-	//cout << "update hook" << endl;
+	//std::cout << "update hook" << std::endl;
 	gConfig.purge();
 }
 
@@ -54,29 +52,29 @@ int main(int argc, char *argv[])
 	}
 
 	for (int i=0; i<5; i++) {
-		cout << "table[" << keys[i] << "]=" << gConfig.getStr(keys[i]) <<  endl;
-		cout << "table[" << keys[i] << "]=" << gConfig.getNum(keys[i]) <<  endl;
+		std::cout << "table[" << keys[i] << "]=" << gConfig.getStr(keys[i]) <<  std::endl;
+		std::cout << "table[" << keys[i] << "]=" << gConfig.getNum(keys[i]) <<  std::endl;
 	}
 
 	for (int i=0; i<5; i++) {
-		cout << "defined table[" << keys[i] << "]=" << gConfig.defines(keys[i]) <<  endl;
+		std::cout << "defined table[" << keys[i] << "]=" << gConfig.defines(keys[i]) <<  std::endl;
 	}
 
 	gConfig.set("key5","100 200 300  400 ");
 	std::vector<unsigned> vect = gConfig.getVector("key5");
-	cout << "vect length " << vect.size() << ": ";
-	for (unsigned i=0; i<vect.size(); i++) cout << " " << vect[i];
-	cout << endl;
-	std::vector<string> svect = gConfig.getVectorOfStrings("key5");
-	cout << "vect length " << svect.size() << ": ";
-	for (unsigned i=0; i<svect.size(); i++) cout << " " << svect[i] << ":";
-	cout << endl;
+	std::cout << "vect length " << vect.size() << ": ";
+	for (unsigned i=0; i<vect.size(); i++) std::cout << " " << vect[i];
+	std::cout << std::endl;
+	std::vector<std::string> svect = gConfig.getVectorOfStrings("key5");
+	std::cout << "vect length " << svect.size() << ": ";
+	for (unsigned i=0; i<svect.size(); i++) std::cout << " " << svect[i] << ":";
+	std::cout << std::endl;
 
-	cout << "bool " << gConfig.getBool("booltest") << endl;
+	std::cout << "bool " << gConfig.getBool("booltest") << std::endl;
 	gConfig.set("booltest",1);
-	cout << "bool " << gConfig.getBool("booltest") << endl;
+	std::cout << "bool " << gConfig.getBool("booltest") << std::endl;
 	gConfig.set("booltest",0);
-	cout << "bool " << gConfig.getBool("booltest") << endl;
+	std::cout << "bool " << gConfig.getBool("booltest") << std::endl;
 
 	gConfig.getStr("newstring");
 	gConfig.getNum("numnumber");
@@ -84,26 +82,26 @@ int main(int argc, char *argv[])
 
 	SimpleKeyValue pairs;
 	pairs.addItems(" a=1 b=34 dd=143 ");
-	cout<< pairs.get("a") << endl;
-	cout<< pairs.get("b") << endl;
-	cout<< pairs.get("dd") << endl;
+	std::cout<< pairs.get("a") << std::endl;
+	std::cout<< pairs.get("b") << std::endl;
+	std::cout<< pairs.get("dd") << std::endl;
 
 	gConfig.set("fkey","123.456");
 	float fval = gConfig.getFloat("fkey");
-	cout << "fkey " << fval << endl;
+	std::cout << "fkey " << fval << std::endl;
 
-	cout << "search fkey:" << endl;
-	gConfig.find("fkey",cout);
-	cout << "search fkey:" << endl;
-	gConfig.find("fkey",cout);
+	std::cout << "search fkey:" << std::endl;
+	gConfig.find("fkey",std::cout);
+	std::cout << "search fkey:" << std::endl;
+	gConfig.find("fkey",std::cout);
 	gConfig.remove("fkey");
-	cout << "search fkey:" << endl;
-	gConfig.find("fkey",cout);
+	std::cout << "search fkey:" << std::endl;
+	gConfig.find("fkey",std::cout);
 
 	try {
 		gConfig.getNum("supposedtoabort");
 	} catch (ConfigurationTableKeyNotFound) {
-		cout << "ConfigurationTableKeyNotFound exception successfully caught." << endl;
+		std::cout << "ConfigurationTableKeyNotFound exception successfully caught." << std::endl;
 	}
 }
 

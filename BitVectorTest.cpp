@@ -32,8 +32,6 @@
 #include <cstdlib>
 #include <string.h>
  
-using namespace std;
-
 // We must have a gConfig now to include BitVector.
 #include "Configuration.h"
 ConfigurationTable gConfig;
@@ -42,49 +40,49 @@ ConfigurationTable gConfig;
 void origTest()
 {
 	BitVector v0("0000111100111100101011110000");
-	cout << v0 << endl;
+	std::cout << v0 << std::endl;
 	// (pat) The conversion from a string was inserting garbage into the result BitVector.
 	// Fixed now so only 0 or 1 are inserted, but lets check:
-	for (char *cp = v0.begin(); cp < v0.end(); cp++) cout << (int)*cp<<" ";
-	cout << endl;
+	for (char *cp = v0.begin(); cp < v0.end(); cp++) std::cout << (int)*cp<<" ";
+	std::cout << std::endl;
 
 	BitVector v1(v0);
 	v1.LSB8MSB();
-	cout <<v1 << " (byte swapped)" << endl;
+	std::cout <<v1 << " (byte swapped)" << std::endl;
 
 	// Test operator==
 	assert(v1 == v1);
-	cout <<"v0="<<v0 <<endl;
-	cout <<"v1="<<v1 <<endl;
+	std::cout <<"v0="<<v0 <<std::endl;
+	std::cout <<"v1="<<v1 <<std::endl;
 	assert(!(v0 == v1));
 
 	BitVector v5("000011110000");
 	int r1 = v5.peekField(0,8);
 	int r2 = v5.peekField(4,4);
 	int r3 = v5.peekField(4,8);
-	cout << r1 <<  ' ' << r2 << ' ' << r3 << endl;
-	cout << v5 << endl;
+	std::cout << r1 <<  ' ' << r2 << ' ' << r3 << std::endl;
+	std::cout << v5 << std::endl;
 	v5.fillField(0,0xa,4);
 	int r4 = v5.peekField(0,8);
-	cout << v5 << endl;
-	cout << r4 << endl;
+	std::cout << v5 << std::endl;
+	std::cout << r4 << std::endl;
 
 	v5.reverse8();
-	cout << v5 << endl;
+	std::cout << v5 << std::endl;
 
 	unsigned char ts[9] = "abcdefgh";
 	BitVector tp(70);
-	cout << "ts=" << ts << endl;
+	std::cout << "ts=" << ts << std::endl;
 	tp.unpack(ts);
-	cout << "tp=" << tp << endl;
+	std::cout << "tp=" << tp << std::endl;
 	tp.pack(ts);
-	cout << "ts=" << ts << endl;
+	std::cout << "ts=" << ts << std::endl;
 
 	BitVector v6("010101");
 	BitVector v7(3);
 	unsigned punk[3] = {1,2,5};
 	v6.copyPunctured(v7, punk, 3);
-	cout << "v7=" << v7 << endl;
+	std::cout << "v7=" << v7 << std::endl;
 }
 
 
@@ -96,20 +94,20 @@ void foo(TestVector a)
 }
 void anotherTest()
 {
-	cout << "START BitVector anotherTest" << endl;
+	std::cout << "START BitVector anotherTest" << std::endl;
 	TestVector v0("0000111100111100101011110000");
 	TestVector atest = v0.head(3);
-	cout << atest << endl;
-	cout << "Calling head" << endl;
-	cout << v0.head(3) << endl;
-	cout << "Passing BitVector" << endl;
+	std::cout << atest << std::endl;
+	std::cout << "Calling head" << std::endl;
+	std::cout << v0.head(3) << std::endl;
+	std::cout << "Passing BitVector" << std::endl;
 	// This calls Vector const copy constructor.
 	// That is because the implicitly declared copy constructor for BitVector is of the form (BitVector const&)
 	foo(v0);
 	const TestVector ctest("0000");
-	cout << ctest.cloneSegment(0,2) << endl;
-	cout << "after"<<endl;
-	cout << "FINISH anotherTest" << endl;
+	std::cout << ctest.cloneSegment(0,2) << std::endl;
+	std::cout << "after"<<std::endl;
+	std::cout << "FINISH anotherTest" << std::endl;
 }
 
 BitVector randomBitVector(int n)

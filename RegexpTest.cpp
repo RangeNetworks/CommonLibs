@@ -28,8 +28,6 @@
 #include "Regexp.h"
 #include <iostream>
 
-using namespace std;
-
 
 int main(int argc, char *argv[])
 {
@@ -40,9 +38,9 @@ int main(int argc, char *argv[])
 	const char text1[] = "dburgess@jcis.net test message";
 	const char text2[] = "no address text message";
 
-	cout << email.match(text1) << " " << text1 << endl;
-	cout << email.match(text2) << " " << text2 << endl;
+	std::cout << email.match(text1) << " " << text1 << std::endl;
+	std::cout << email.match(text2) << " " << text2 << std::endl;
 
-	cout << simple.match(text1) << " " << text1 << endl;
-	cout << simple.match(text2) << " " << text2 << endl;
+	std::cout << simple.match(text1) << " " << text1 << std::endl;
+	std::cout << simple.match(text2) << " " << text2 << std::endl;
 }

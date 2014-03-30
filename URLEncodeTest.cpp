@@ -4,14 +4,11 @@
 #include <iostream>
 
 
-using namespace std;
-
-
 int main(int argc, char *argv[])
 {
 
-	string test = string("Testing: !@#$%^&*() " __DATE__ " " __TIME__);
-	cout << test << endl;
-	cout << URLEncode(test) << endl;
+	std::string test = std::string("Testing: !@#$%^&*() " __DATE__ " " __TIME__);
+	std::cout << test << std::endl;
+	std::cout << URLEncode(test) << std::endl;
 }
 
