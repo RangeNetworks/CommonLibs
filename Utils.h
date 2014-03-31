@@ -32,7 +32,7 @@ using namespace std;
 extern double timef();					// high resolution time
 // We dont use a default arg here timestr(unsigned fieldwidth=12) because g++ complains about duplicate decl in Logger.h
 extern const std::string timestr();		// A timestamp to print in messages.
-extern const std::string timestr(unsigned fieldwidth);		// A timestamp to print in messages.
+extern const std::string timestr(unsigned fieldwidth, bool addDate = false);		// A timestamp to print in messages.
 extern void sleepf(double howlong);	// high resolution sleep
 extern int gcd(int x, int y);
 

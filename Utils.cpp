@@ -265,14 +265,20 @@ double timef()
 	return tv.tv_usec / 1000000.0 + tv.tv_sec;
 }
 
-const std::string timestr(unsigned fieldwidth)	// Use to pick the number of chars in the output.
+const std::string timestr(unsigned fieldwidth, bool addDate)	// Use to pick the number of chars in the output.
 {
 	struct timeval tv;
 	struct tm tm;
 	gettimeofday(&tv,NULL);
 	localtime_r(&tv.tv_sec,&tm);
 	unsigned tenths = tv.tv_usec / 100000;	// Rounding down is ok.
-	std::string result = format(" %02d:%02d:%02d.%1d",tm.tm_hour,tm.tm_min,tm.tm_sec,tenths);
+	std::string result;
+	if (addDate)
+	    result = format(" %04d/%02d/%02d %02d:%02d:%02d.%1d",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec, tenths);
+	else
+	    result = format(" %02d:%02d:%02d.%1d",tm.tm_hour,tm.tm_min,tm.tm_sec,tenths);
 	return result.substr(fieldwidth >= result.size() ? 0 : result.size() - fieldwidth);
 	//switch (maxfield) {
 	//case 'h': case 'H': return format("%02d:%02d:%02d.%1d",tm.tm_hour,tm.tm_min,tm.tm_sec,tenths);

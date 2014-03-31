@@ -61,7 +61,7 @@ extern pid_t gPid;
 #define _LOG(level) \
 	Log(LOG_##level).get() << "pid(" << gPid << "), " \
         << "tid(" << gettid() << ") " \
-	<< Utils::timestr() << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
+	<< Utils::timestr(21, true) << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
 
 // (pat) If you '#define LOG_GROUP groupname' before including Logger.h, then you can set Log.Level.groupname as well as Log.Level.filename.
 #ifdef LOG_GROUP
