@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <sstream>
 #include <string.h>
+#include <Logger.h>
 
 using namespace std;
 
@@ -54,14 +55,11 @@ BitVector::BitVector(const char *valString)
 }
 
 
-
-
-
 uint64_t BitVector::peekField(size_t readIndex, unsigned length) const
 {
 	uint64_t accum = 0;
 	char *dp = mStart + readIndex;
-	assert(dp+length <= mEnd);
+
 	for (unsigned i=0; i<length; i++) {
 		accum = (accum<<1) | ((*dp++) & 0x01);
 	}
@@ -95,35 +93,40 @@ uint64_t BitVector::readField(size_t& readIndex, unsigned length) const
 
 uint64_t BitVector::readFieldReversed(size_t& readIndex, unsigned length) const
 {
+
 	const uint64_t retVal = peekFieldReversed(readIndex,length);
 	readIndex += length;
 	return retVal;
-}
 
+}
 
 
 
 
 void BitVector::fillField(size_t writeIndex, uint64_t value, unsigned length)
 {
-	char *dpBase = mStart + writeIndex;
-	char *dp = dpBase + length - 1;
-	assert(dp < mEnd);
-	while (dp>=dpBase) {
-		*dp-- = value & 0x01;
-		value >>= 1;
+	if (length != 0) {
+		char *dpBase = mStart + writeIndex;
+		char *dp = dpBase + length - 1;
+		assert(dp < mEnd);
+		while (dp>=dpBase) {
+			*dp-- = value & 0x01;
+			value >>= 1;
+		}
 	}
 }
 
 
 void BitVector::fillFieldReversed(size_t writeIndex, uint64_t value, unsigned length)
 {
-	char *dp = mStart + writeIndex;
-	char *dpEnd = dp + length - 1;
-	assert(dpEnd < mEnd);
-	while (dp<=dpEnd) {
-		*dp++ = value & 0x01;
-		value >>= 1;
+	if (length != 0) {
+		char *dp = mStart + writeIndex;
+		char *dpEnd = dp + length - 1;
+		assert(dpEnd < mEnd);
+		while (dp<=dpEnd) {
+			*dp++ = value & 0x01;
+			value >>= 1;
+		}
 	}
 }
 
@@ -132,15 +135,19 @@ void BitVector::fillFieldReversed(size_t writeIndex, uint64_t value, unsigned le
 
 void BitVector::writeField(size_t& writeIndex, uint64_t value, unsigned length)
 {
-	fillField(writeIndex,value,length);
-	writeIndex += length;
+	if (length != 0) {
+		fillField(writeIndex,value,length);
+		writeIndex += length;
+	}
 }
 
 
 void BitVector::writeFieldReversed(size_t& writeIndex, uint64_t value, unsigned length)
 {
-	fillFieldReversed(writeIndex,value,length);
-	writeIndex += length;
+	if (length != 0) {
+		fillFieldReversed(writeIndex,value,length);
+		writeIndex += length;
+	}
 }
 
 

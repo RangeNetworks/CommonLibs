@@ -140,7 +140,7 @@ template <class T> class VectorBase
 	void vInit(size_t elements)
 	{
 		mData = elements ? new T[elements] : NULL;
-		mStart = mData;
+		mStart = mData;  // This is where mStart get set to zero
 		mEnd = mStart + elements;
 	}
 
