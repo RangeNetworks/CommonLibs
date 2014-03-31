@@ -127,13 +127,13 @@ class RWLock {
 
 	~RWLock();
 
-	void wlock() { pthread_rwlock_wrlock(&mRWLock); }
-	void rlock() { pthread_rwlock_rdlock(&mRWLock); }
+	const char * wlock() { pthread_rwlock_wrlock(&mRWLock); return ""; }
+	const char * rlock() { pthread_rwlock_rdlock(&mRWLock); return ""; }
 
 	bool trywlock() { return pthread_rwlock_trywrlock(&mRWLock)==0; }
 	bool tryrlock() { return pthread_rwlock_tryrdlock(&mRWLock)==0; }
 
-	void unlock() { pthread_rwlock_unlock(&mRWLock); }
+	const char * unlock() { pthread_rwlock_unlock(&mRWLock); return ""; }
 
 };
 

@@ -225,6 +225,21 @@ void Signal::wait(Mutex& wMutex, long timeout) const
 	pthread_cond_timedwait(&mSignal,&wMutex.mMutex,&waitTime);
 }
 
+struct wrapArgs
+{
+        void *(*task)(void *);
+        void *arg;
+};
+
+static void *
+thread_main(void *arg)
+{
+    struct wrapArgs *p = (struct wrapArgs *)arg;
+    void *(*task)(void *) = p->task;
+    void *param = p->arg;
+    delete p;
+    return (*task)(param);
+}
 
 void Thread::start(void *(*task)(void*), void *arg)
 {
@@ -235,7 +250,10 @@ void Thread::start(void *(*task)(void*), void *arg)
 	//assert(!res);
 	res = pthread_attr_setstacksize(&mAttrib, mStackSize);
 	assert(!res);
-	res = pthread_create(&mThread, &mAttrib, task, arg);
+        struct wrapArgs *p = new wrapArgs;
+        p->task = task;
+        p->arg = arg;
+	res = pthread_create(&mThread, &mAttrib, &thread_main, p);
 	assert(!res);
 }
 

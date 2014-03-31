@@ -46,6 +46,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/unistd.h>
+#include "Threads.h"
 
 // We cannot include Utils.h because it includes Logger.h, so just declare timestr() here.
 // If timestr decl is changed G++ will whine when Utils.h is included.
@@ -56,9 +57,17 @@ namespace Utils { const std::string timestr(); };
 #endif // !defined(gettid)
 
 extern pid_t gPid;
+typedef std::map<pthread_t,pid_t> PthreadPidMap;
+extern PthreadPidMap gPthreadTidMap;
+extern RWLock gPthreadTidLock;
 
 #define _LOG(level) \
-	Log(LOG_##level).get() << "pid(" << gPid << "), tid(" << gettid() << ") " \
+	Log(LOG_##level).get() << "pid(" << gPid << "), " \
+        << "tid(" \
+        << gPthreadTidLock.rlock() \
+        << gPthreadTidMap[pthread_self()] \
+        << gPthreadTidLock.unlock() \
+        << ") " \
 	<< Utils::timestr() << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
 
 // (pat) If you '#define LOG_GROUP groupname' before including Logger.h, then you can set Log.Level.groupname as well as Log.Level.filename.
@@ -139,7 +148,14 @@ class Log {
 
 	Log(int wPriority)
 		:mPriority(wPriority), mDummyInit(false)
-	{ }
+	{
+            gPthreadTidLock.rlock();
+            if (gPthreadTidMap[pthread_self()] == 0)
+            {
+                gPthreadTidMap[pthread_self()] = gettid();
+            }
+            gPthreadTidLock.unlock();
+        }
 
 	// (pat) This constructor is not used to construct a Log record, it is called once per application
 	// to init the syslog facility.  This is a very poor use of C++.
