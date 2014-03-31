@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "coredumper.h"
 #include "UnixSignal.h"
 #include "Logger.h"
 
@@ -53,8 +54,23 @@ static void _sigHandler(int sig)
 
 void UnixSignal::Handler(int sig)
 {
-    //TODO: Code should go here to generate the core file, before we change too
-    // much of the data in the program.
+    // Only write core files for the signals that need core
+    switch(sig)
+    {
+    case SIGQUIT: case SIGILL: case SIGABRT: case SIGFPE: case SIGSEGV:
+    case SIGBUS: case SIGSYS: case SIGTRAP: case SIGXCPU: case SIGXFSZ:
+	{
+	    char buf[BUFSIZ];
+	    if (mAddPid)
+		snprintf(buf, sizeof(buf)-1, "%s.%d", mCoreFile.c_str(), getpid());
+	    else
+		snprintf(buf, sizeof(buf)-1, "%s", mCoreFile.c_str());
+	    WriteCoreDump(buf);
+	}
+	break;
+    default:
+	break;
+    }
 
     printf("Processing signal vector for sig %d\n", sig);
     mLock[sig].lock();
@@ -72,8 +88,10 @@ UnixSignal::UnixSignal(void)
     for (int i = 0; i < C_NSIG; i++)
     {
 	mListHandlers[i].clear();
-	signal(i, _sigHandler);
+	//signal(i, _sigHandler);
     }
+    mAddPid = false;
+    mCoreFile = "core";
 }
 
 UnixSignal::~UnixSignal(void)
@@ -93,6 +111,7 @@ void UnixSignal::Register(sighandler_t handler, int sig) // register the handler
 	return;
     }
     mLock[sig].lock();
+    signal(sig, _sigHandler); // only catch signals that have been registered
     mListHandlers[sig].insert(mListHandlers[sig].end(), handler);
     mLock[sig].unlock();
 }

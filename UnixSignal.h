@@ -31,6 +31,8 @@ public:
 private:
     std::list<sighandler_t>  mListHandlers[C_NSIG]; // list of signal handlers to call for all signals
     Mutex mLock[C_NSIG];
+    bool mAddPid;				    // if true file is file.pid
+    std::string mCoreFile;			    // name of file to save to
 public:
     UnixSignal(void);
     ~UnixSignal(void);
@@ -38,6 +40,7 @@ public:
     void Register(sighandler_t handler, int sig); // register a signal handler with the system
     void Handler(int sig);    // main signal handler, iterates through mListHandlers
     void Dump(void); // debug dump of list
+    inline void CoreName(const std::string &coreFile, bool addPid) { mCoreFile = coreFile; mAddPid = addPid; }
 };
 
 extern UnixSignal gSigVec;

@@ -91,11 +91,11 @@ BitVectorTest_LDADD = libcommon.la $(SQLITE_LA)
 
 InterthreadTest_SOURCES = InterthreadTest.cpp
 InterthreadTest_LDADD = libcommon.la $(SQLITE_LA)
-InterthreadTest_LDFLAGS = -lpthread
+InterthreadTest_LDFLAGS = -lpthread -lcoredumper 
 
 SocketsTest_SOURCES = SocketsTest.cpp
 SocketsTest_LDADD = libcommon.la $(SQLITE_LA)
-SocketsTest_LDFLAGS = -lpthread
+SocketsTest_LDFLAGS = -lpthread -lcoredumper 
 
 TimevalTest_SOURCES = TimevalTest.cpp
 TimevalTest_LDADD = libcommon.la
@@ -110,10 +110,10 @@ ConfigurationTest_SOURCES = ConfigurationTest.cpp
 ConfigurationTest_LDADD = libcommon.la 	$(SQLITE_LA)
 
 SelfDetectTest_SOURCES = SelfDetectTest.cpp
-SelfDetectTest_LDADD = libcommon.la $(SQLITE_LA)
+SelfDetectTest_LDADD = libcommon.la $(SQLITE_LA) -lcoredumper 
 
 UnixSignalTest_SOURCES = UnixSignalTest.cpp
-UnixSignalTest_LDADD = libcommon.la $(SQLITE_LA)
+UnixSignalTest_LDADD = libcommon.la $(SQLITE_LA) -lcoredumper 
 
 # ReportingTest_SOURCES = ReportingTest.cpp
 # ReportingTest_LDADD = libcommon.la $(SQLITE_LA)
