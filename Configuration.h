@@ -348,6 +348,7 @@ class SimpleKeyValue {
 
 	std::string getStrOrBust(const char *key) const;
 	long getNumOrBust(const char *key) const;
+	long getNum(const char *key, bool &valid) const;
 };
 
 

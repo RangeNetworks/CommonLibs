@@ -997,6 +997,14 @@ long SimpleKeyValue::getNumOrBust(const char *key) const
 	return atol(p->second.c_str());
 }
 
+long SimpleKeyValue::getNum(const char *key, bool &valid) const
+{
+	HashStringMap::const_iterator p = mMap.find(key);
+	if (p==mMap.end()) { valid = false; return 0; }
+	// TODO: we should verify it is really a number.
+	return atol(p->second.c_str());
+}
+
 
 void SimpleKeyValue::addItems(const char* pairs_orig)
 {
