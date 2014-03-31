@@ -319,6 +319,16 @@ class ConfigurationTable {
 
 typedef std::map<HashString, std::string> HashStringMap;
 
+class SimpleKeyValueException : public std::exception {
+	std::string mWhy;
+	public:
+	const char *what() const throw() { return mWhy.c_str(); }
+	SimpleKeyValueException(std::string wWhy) : mWhy(wWhy) {}
+	// This is dorky.  We have to define the no-op destructor because the default destructor has the wrong throw() content,
+	// and even though the throw content is not used by the compiler.  What a balls-up.
+	~SimpleKeyValueException() throw() {}
+};
+
 class SimpleKeyValue {
 
 	protected:
@@ -335,6 +345,9 @@ class SimpleKeyValue {
 
 	/** Return a reference to the string at map["key"]. */
 	const char* get(const char*) const;
+
+	std::string getStrOrBust(const char *key) const;
+	long getNumOrBust(const char *key) const;
 };
 
 

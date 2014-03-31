@@ -982,6 +982,21 @@ const char* SimpleKeyValue::get(const char* key) const
 	return p->second.c_str();
 }
 
+std::string SimpleKeyValue::getStrOrBust(const char *key) const
+{
+	HashStringMap::const_iterator p = mMap.find(key);
+	if (p==mMap.end()) throw(SimpleKeyValueException(format("key not found:%s",key)));
+	return p->second;
+}
+
+long SimpleKeyValue::getNumOrBust(const char *key) const
+{
+	HashStringMap::const_iterator p = mMap.find(key);
+	if (p==mMap.end()) throw(SimpleKeyValueException(format("key not found:%s",key)));
+	// TODO: we should verify it is really a number.
+	return atol(p->second.c_str());
+}
+
 
 void SimpleKeyValue::addItems(const char* pairs_orig)
 {
