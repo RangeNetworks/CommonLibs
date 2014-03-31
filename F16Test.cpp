@@ -28,8 +28,6 @@
 
 #include <iostream>
 
-using namespace std;
-
 int main(int argc, char **argv)
 {
 
@@ -38,18 +36,18 @@ int main(int argc, char **argv)
 	F16 c = 2.5 * 1.5;
 	F16 d = c + a;
 	F16 e = 10;
-	cout << a << ' ' << b << ' ' << c << ' ' << d << ' ' << e << endl;
+	std::cout << a << ' ' << b << ' ' << c << ' ' << d << ' ' << e << std::endl;
 
 	a *= 3;
 	b *= 0.3;
 	c *= e;
-	cout << a << ' ' << b << ' ' << c << ' ' << d << endl;
+	std::cout << a << ' ' << b << ' ' << c << ' ' << d << std::endl;
 
 	a /= 3;
 	b /= 0.3;
 	c = d * 0.05;
-	cout << a << ' ' << b << ' ' << c << ' ' << d << endl;
+	std::cout << a << ' ' << b << ' ' << c << ' ' << d << std::endl;
 
 	F16 f = a/d;
-	cout << f << ' ' << f+0.5 << endl;
+	std::cout << f << ' ' << f+0.5 << std::endl;
 }

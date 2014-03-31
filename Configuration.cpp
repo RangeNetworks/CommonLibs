@@ -39,8 +39,6 @@
 #define	debugLogEarly(...)
 #endif
 
-using namespace std;
-
 char gCmdName[20] = {0}; // Use a char* to avoid avoid static initialization of string, and race at startup.
 
 static const char* createConfigTable = {
@@ -216,17 +214,17 @@ string ConfigurationTable::getDefaultSQL(const std::string& program, const std::
 	stringstream ss;
 	ConfigurationKeyMap::iterator mp;
 
-	ss << "--" << endl;
-	ss << "-- This file was generated using: " << program << " --gensql" << endl;
-	ss << "-- binary version: " << version << endl;
-	ss << "--" << endl;
-	ss << "-- Future changes should not be put in this file directly but" << endl;
-	ss << "-- rather in the program's ConfigurationKey schema." << endl;
-	ss << "--" << endl;
-	ss << "PRAGMA foreign_keys=OFF;" << endl;
-	//ss << "PRAGMA journal_mode=WAL;" << endl;
-	ss << "BEGIN TRANSACTION;" << endl;
-	ss << "CREATE TABLE IF NOT EXISTS CONFIG ( KEYSTRING TEXT UNIQUE NOT NULL, VALUESTRING TEXT, STATIC INTEGER DEFAULT 0, OPTIONAL INTEGER DEFAULT 0, COMMENTS TEXT DEFAULT '');" << endl;
+	ss << "--" << std::endl;
+	ss << "-- This file was generated using: " << program << " --gensql" << std::endl;
+	ss << "-- binary version: " << version << std::endl;
+	ss << "--" << std::endl;
+	ss << "-- Future changes should not be put in this file directly but" << std::endl;
+	ss << "-- rather in the program's ConfigurationKey schema." << std::endl;
+	ss << "--" << std::endl;
+	ss << "PRAGMA foreign_keys=OFF;" << std::endl;
+	//ss << "PRAGMA journal_mode=WAL;" << std::endl;
+	ss << "BEGIN TRANSACTION;" << std::endl;
+	ss << "CREATE TABLE IF NOT EXISTS CONFIG ( KEYSTRING TEXT UNIQUE NOT NULL, VALUESTRING TEXT, STATIC INTEGER DEFAULT 0, OPTIONAL INTEGER DEFAULT 0, COMMENTS TEXT DEFAULT '');" << std::endl;
 
 	mp = mSchema.begin();
 	while (mp != mSchema.end()) {
@@ -258,12 +256,12 @@ string ConfigurationTable::getDefaultSQL(const std::string& program, const std::
 				ss << "  Static.";
 			}
 			ss << quote;
-		ss << ");" << endl;
+		ss << ");" << std::endl;
 		mp++;
 	}
 
-	ss << "COMMIT;" << endl;
-	ss << endl;
+	ss << "COMMIT;" << std::endl;
+	ss << std::endl;
 
 	return ss.str();
 }
@@ -273,13 +271,13 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 	stringstream ss;
 	ConfigurationKeyMap::iterator mp;
 
-	ss << "% START AUTO-GENERATED CONTENT" << endl;
-	ss << "% -- these sections were generated using: " << program << " --gentex" << endl;
-	ss << "% -- binary version: " << version << endl;
+	ss << "% START AUTO-GENERATED CONTENT" << std::endl;
+	ss << "% -- these sections were generated using: " << program << " --gentex" << std::endl;
+	ss << "% -- binary version: " << version << std::endl;
 
-	ss << "\\section{Customer Site Parameters}" << endl;
-	ss << "These parameters must be changed to fit your site." << endl;
-	ss << "\\begin{itemize}" << endl;
+	ss << "\\section{Customer Site Parameters}" << std::endl;
+	ss << "These parameters must be changed to fit your site." << std::endl;
+	ss << "\\begin{itemize}" << std::endl;
 	mp = mSchema.begin();
 	while (mp != mSchema.end()) {
 		if (mp->second.getVisibility() == ConfigurationKey::CUSTOMERSITE) {
@@ -288,16 +286,16 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 				ss << mp->first << "} -- ";
 				// description
 				ss << mp->second.getDescription();
-			ss << endl;
+			ss << std::endl;
 		}
 		mp++;
 	}
-	ss << "\\end{itemize}" << endl;
-	ss << endl;
+	ss << "\\end{itemize}" << std::endl;
+	ss << std::endl;
 
-	ss << "\\section{Customer Tuneable Parameters}" << endl;
-	ss << "These parameters can be changed to optimize your site." << endl;
-	ss << "\\begin{itemize}" << endl;
+	ss << "\\section{Customer Tuneable Parameters}" << std::endl;
+	ss << "These parameters can be changed to optimize your site." << std::endl;
+	ss << "\\begin{itemize}" << std::endl;
 	mp = mSchema.begin();
 	while (mp != mSchema.end()) {
 		if (mp->second.getVisibility() != ConfigurationKey::CUSTOMERSITE &&
@@ -311,16 +309,16 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 				ss << mp->first << "} -- ";
 				// description
 				ss << mp->second.getDescription();
-			ss << endl;
+			ss << std::endl;
 		}
 		mp++;
 	}
-	ss << "\\end{itemize}" << endl;
-	ss << endl;
+	ss << "\\end{itemize}" << std::endl;
+	ss << std::endl;
 
-	ss << "\\section{Developer/Factory Parameters}" << endl;
-	ss << "These parameters should only be changed by when developing new code." << endl;
-	ss << "\\begin{itemize}" << endl;
+	ss << "\\section{Developer/Factory Parameters}" << std::endl;
+	ss << "These parameters should only be changed by when developing new code." << std::endl;
+	ss << "\\begin{itemize}" << std::endl;
 	mp = mSchema.begin();
 	while (mp != mSchema.end()) {
 		if (mp->second.getVisibility() == ConfigurationKey::FACTORY ||
@@ -330,13 +328,13 @@ string ConfigurationTable::getTeX(const std::string& program, const std::string&
 				ss << mp->first << "} -- ";
 				// description
 				ss << mp->second.getDescription();
-			ss << endl;
+			ss << std::endl;
 		}
 		mp++;
 	}
-	ss << "\\end{itemize}" << endl;
-	ss << "% END AUTO-GENERATED CONTENT" << endl;
-	ss << endl;
+	ss << "\\end{itemize}" << std::endl;
+	ss << "% END AUTO-GENERATED CONTENT" << std::endl;
+	ss << std::endl;
 
 	string tmp = Utils::replaceAll(ss.str(), "^", "\\^");
 	return Utils::replaceAll(tmp, "_", "\\_");
@@ -821,7 +819,7 @@ bool ConfigurationTable::remove(const string& key)
 
 
 
-void ConfigurationTable::find(const string& pat, ostream& os) const
+void ConfigurationTable::find(const string& pat, std::ostream& os) const
 {
 	// Prepare the statement.
 	string cmd = "SELECT KEYSTRING,VALUESTRING FROM CONFIG WHERE KEYSTRING LIKE \"%" + pat + "%\"";
@@ -836,8 +834,8 @@ void ConfigurationTable::find(const string& pat, ostream& os) const
 		if (value) {
 			len = strlen(value);
 		}
-		if (len && value) os << value << endl;
-		else os << "(disabled)" << endl;
+		if (len && value) os << value << std::endl;
+		else os << "(disabled)" << std::endl;
 		src = sqlite3_run_query(mDB,stmt);
 	}
 	sqlite3_finalize(stmt);
@@ -1154,7 +1152,7 @@ const std::string ConfigurationKey::typeToString(const ConfigurationKey::Type& t
 	return ret;
 }
 
-void ConfigurationKey::printKey(const ConfigurationKey &key, const std::string& currentValue, ostream& os) {
+void ConfigurationKey::printKey(const ConfigurationKey &key, const std::string& currentValue, std::ostream& os) {
 	os << key.getName() << " ";
 	if (!currentValue.length()) {
 		os << "(disabled)";
@@ -1164,10 +1162,10 @@ void ConfigurationKey::printKey(const ConfigurationKey &key, const std::string& 
 	if (currentValue.compare(key.getDefaultValue()) == 0) {
 		os << "     [default]";
 	}
-	os << endl;
+	os << std::endl;
 }
 
-void ConfigurationKey::printDescription(const ConfigurationKey &key, ostream& os) {
+void ConfigurationKey::printDescription(const ConfigurationKey &key, std::ostream& os) {
 	std::string tmp;
 	unsigned scope;
 

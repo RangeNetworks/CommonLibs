@@ -14,8 +14,6 @@
 
 #include <string>
 #include <vector>
-using namespace std;
-
 
 // Wrappers to sqlite operations.
 // These will eventually get moved to commonlibs.

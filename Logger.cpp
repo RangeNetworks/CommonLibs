@@ -36,8 +36,6 @@
 #include "Threads.h"	// pat added
 
 
-using namespace std;
-
 // Reference to a global config table, used all over the system.
 extern ConfigurationTable gConfig;
 
@@ -202,7 +200,7 @@ Log::~Log()
 	// Save alarms in the local list and echo them to stderr.
 	if (mPriority <= LOG_CRIT) {
 		if (sLoggerInited) addAlarm(mStream.str().c_str());
-		cerr << mStream.str() << endl;
+		cerr << mStream.str() << std::endl;
 	}
 	// Current logging level was already checked by the macro.
 	// So just log.
