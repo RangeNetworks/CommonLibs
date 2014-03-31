@@ -35,8 +35,11 @@
 #include "SelfDetect.h"
 #include "Logger.h"
 #include "Exit.h"
+#include "Configuration.h"
 
 //SelfDetect gSelf;
+
+extern ConfigurationTable gConfig;
 
 static void e(void)
 {
@@ -73,11 +76,13 @@ void SelfDetect::RegisterProgram(const char *argv0)
     if (fp == NULL)
     {
     	LOG(ERR) << "*** Unable to create " << buf << ": " << strerror(errno);
-	Exit::exit(Exit::CREATEFILE);
+		Exit::exit(Exit::CREATEFILE);
     }
     fprintf(fp, "%d\n", getpid());
     fclose(fp);
     atexit(e);
+	gSigVec.CoreName(gConfig.getStr("Core.File"), gConfig.getBool("Core.Pid"));
+	gSigVec.TarName(gConfig.getStr("Core.TarFile"), gConfig.getBool("Core.SaveFiles"));
 
     // Now, register for all signals to do the cleanup
     for (int i = 1; i < UnixSignal::C_NSIG; i++)

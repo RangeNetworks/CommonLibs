@@ -33,6 +33,8 @@ private:
     Mutex mLock[C_NSIG];
     bool mAddPid;				    // if true file is file.pid
     std::string mCoreFile;			    // name of file to save to
+    bool mSaveFiles;				    // if true, save /proc related files in a compressed tarball
+    std::string mTarFile;			    // tarball for proc files
 public:
     UnixSignal(void);
     ~UnixSignal(void);
@@ -41,6 +43,7 @@ public:
     void Handler(int sig);    // main signal handler, iterates through mListHandlers
     void Dump(void); // debug dump of list
     inline void CoreName(const std::string &coreFile, bool addPid) { mCoreFile = coreFile; mAddPid = addPid; }
+    inline void TarName(const std::string &tarFile, bool saveFiles) { mTarFile = tarFile; mSaveFiles = saveFiles; }
 };
 
 extern UnixSignal gSigVec;

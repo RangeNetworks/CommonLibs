@@ -66,6 +66,30 @@ void UnixSignal::Handler(int sig)
 	    else
 		snprintf(buf, sizeof(buf)-1, "%s", mCoreFile.c_str());
 	    WriteCoreDump(buf);
+
+	    // and save the files if needed
+	    if (mSaveFiles)
+	    {
+	    	char buf[BUFSIZ];
+		std::string s;
+		std::string p;
+		sprintf(buf, "%d", getpid());
+		p = buf;
+		s  = "rm -rf /tmp/staging." ; s += p; s += "/ ; ";
+		s += "mkdir /tmp/staging." ; s += p; s += "/ ; ";
+		s += "cp --parents /etc/issue /tmp/staging." ; s += p; s += "/ ; ";
+		s += "cp --parents /proc/cpuinfo /proc/interrupts /proc/iomem /proc/ioports /proc/diskstats /proc/loadavg /proc/locks /proc/meminfo /proc/softirqs /proc/stat /proc/uptime /proc/version /proc/version_signature /proc/vmstat /tmp/staging." ; s += p; s += "/ ; ";
+
+		s += "for i in cmdline cpuset environ io limits maps net/tcp net/udp net/tcp6 net/udp6 net/unix net/netstat sched schedstat smaps stat statm status ; ";
+		s += "do cp --parents /proc/" ; s += p; s += "/$i /tmp/staging." ; s += p; s += "/ ; ";
+		s += "cp --parents /proc/"; s += p; s += "/task/*/stat* /tmp/staging."; s += p; s += "/ ; ";
+		s += "done ; ";
+		s += "tar --create --verbose --file=- --directory=/proc/"; s += p; s += " fd | ( cd /tmp/staging."; s += p; s += "/proc/"; s += p; s += "/ ; tar xpvf - ) ; ";
+		s += "tar --create --verbose --file=- --directory=/tmp/staging."; s += p; s += "/ . | gzip > "; s += mTarFile; s += " ; ";
+		s += "rm -rf /tmp/staging." ; s += p;
+		printf("Running '%s'\n", s.c_str());
+		system(s.c_str());
+	    }
 	}
 	break;
     default:
