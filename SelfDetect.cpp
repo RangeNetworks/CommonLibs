@@ -82,16 +82,23 @@ void SelfDetect::RegisterProgram(const char *argv0)
     // Now, register for all signals to do the cleanup
     for (int i = 1; i < UnixSignal::C_NSIG; i++)
     {
-		// HACK because a signal 17 is thrown during a correct initiation of OpenBTS and transceiver
-		// openbts: ALERT 3073816320 05:03:50.4 OpenBTS.cpp:491:main: starting the transceiver
-		// openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:91:Exit: *** Terminating because of signal 17
-		// openbts: NOTICE 3031243584 05:03:50.4 OpenBTS.cpp:165:startTransceiver: starting transceiver ./transceiver w/ 1 ARFCNs and Args:
-		// openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:98:Exit: *** Terminating ./OpenBTS
-		// openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:105:Exit: *** Removing pid file /var/run/OpenBTS.pid
-		if (i == 17) {
-			continue;
+		switch(i)
+		{
+			// Add any signals that need to bypass the signal handling behavior
+			// here.  Currently, SIGCHLD is needed because a signal is generated
+			// when stuff related to the transciever (which is a child process)
+			// occurs.  In that case, the openbts log output was:
+			//		openbts: ALERT 3073816320 05:03:50.4 OpenBTS.cpp:491:main: starting the transceiver
+			//		openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:91:Exit: *** Terminating because of signal 17
+			//		openbts: NOTICE 3031243584 05:03:50.4 OpenBTS.cpp:165:startTransceiver: starting transceiver ./transceiver w/ 1 ARFCNs and Args:
+			//		openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:98:Exit: *** Terminating ./OpenBTS
+			//		openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:105:Exit: *** Removing pid file /var/run/OpenBTS.pid
+			case SIGCHLD:
+				break;
+			default:
+				gSigVec.Register(sigfcn, i);
+				break;
 		}
-    	gSigVec.Register(sigfcn, i);
     }
     mProg = strdup(argv0);
     mFile = strdup(buf);
