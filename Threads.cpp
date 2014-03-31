@@ -55,7 +55,7 @@ void lockCout()
 
 void unlockCout()
 {
-	std::cout << dec << std::endl << flush;
+	std::cout << std::dec << std::endl << std::flush;
 	gStreamLock.unlock();
 }
 
@@ -64,12 +64,12 @@ void lockCerr()
 {
 	gStreamLock.lock();
 	Timeval entryTime;
-	cerr << entryTime << " " << pthread_self() << ": ";
+	std::cerr << entryTime << " " << pthread_self() << ": ";
 }
 
 void unlockCerr()
 {
-	cerr << dec << std::endl << flush;
+	std::cerr << std::dec << std::endl << std::flush;
 	gStreamLock.unlock();
 }
 
@@ -119,9 +119,9 @@ bool Mutex::timedlock(int msecs) // Wait this long in milli-seconds.
 	return ETIMEDOUT != pthread_mutex_timedlock(&mMutex, &timeout);
 }
 
-string Mutex::mutext() const
+std::string Mutex::mutext() const
 {
-	string result;
+	std::string result;
 	result.reserve(100);
 	//result += format("lockid=%u lockcnt=%d",(unsigned)this,mLockCnt);
 	result += format("lockcnt=%d",mLockCnt);

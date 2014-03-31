@@ -67,7 +67,7 @@ MemStats::MemStats()
 	memset(mMemName,0,sizeof(mMemName));
 }
 
-void MemStats::text(ostream &os)
+void MemStats::text(std::ostream &os)
 {
 	os << "Structs current total:\n";
 	for (int i = 0; i < mMax; i++) {
@@ -96,12 +96,12 @@ void MemStats::memChkDel(MemoryNames memIndex, const char *id)
 	}
 }
 
-ostream& operator<<(std::ostream& os, std::ostringstream& ss)
+std::ostream& operator<<(std::ostream& os, std::ostringstream& ss)
 {
 	return os << ss.str();
 }
 
-ostream &osprintf(std::ostream &os, const char *fmt, ...)
+std::ostream &osprintf(std::ostream &os, const char *fmt, ...)
 {
 	va_list ap;
 	char buf[300];
@@ -113,16 +113,16 @@ ostream &osprintf(std::ostream &os, const char *fmt, ...)
 	return os;
 }
 
-string format(const char *fmt, ...)
+std::string format(const char *fmt, ...)
 {
 	va_list ap;
 	char buf[200];
 	va_start(ap,fmt);
 	int n = vsnprintf(buf,199,fmt,ap);
 	va_end(ap);
-	string result;
+	std::string result;
 	if (n <= 199) {
-		result = string(buf);
+		result = std::string(buf);
 	} else {
 		if (n > 5000) { LOG(ERR) << "oversized string in format"; n = 5000; }
 		// We could use vasprintf but we already computed the length...
@@ -132,12 +132,12 @@ string format(const char *fmt, ...)
 		vsnprintf(buffer,n+1,fmt,ap);
 		va_end(ap);
 		//if (n >= (2000-4)) { strcpy(&buf[(2000-4)],"..."); }
-		result = string(buffer);
+		result = std::string(buffer);
 		free(buffer);
 	}
 	return result;
 #if 0	// Maybe ok, but not recommended.  data() is const char*
-	string result;
+	std::string result;
 	va_list ap;
 	va_start(ap,fmt);
 	result.reserve(200);
@@ -156,16 +156,16 @@ string format(const char *fmt, ...)
 }
 
 // Absolutely identical to format above.  This sucks...
-string format1(const char *fmt, ...)
+std::string format1(const char *fmt, ...)
 {
 	va_list ap;
 	char buf[200];
 	va_start(ap,fmt);
 	int n = vsnprintf(buf,199,fmt,ap);
 	va_end(ap);
-	string result;
+	std::string result;
 	if (n <= 199) {
-		result = string(buf);
+		result = std::string(buf);
 	} else {
 		if (n > 5000) { LOG(ERR) << "oversized string in format"; n = 5000; }
 		// We could use vasprintf but we already computed the length...
@@ -175,13 +175,13 @@ string format1(const char *fmt, ...)
 		vsnprintf(buffer,n+1,fmt,ap);
 		va_end(ap);
 		//if (n >= (2000-4)) { strcpy(&buf[(2000-4)],"..."); }
-		result = string(buffer);
+		result = std::string(buffer);
 		free(buffer);
 	}
 	return result;
 }
 
-int myscanf(const char *str, const char *fmt, string *s1)
+int myscanf(const char *str, const char *fmt, std::string *s1)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -189,7 +189,7 @@ int myscanf(const char *str, const char *fmt, string *s1)
 	s1->assign(a1);
 	return n;
 }
-int myscanf(const char *str, const char *fmt, string *s1, string *s2)
+int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -201,7 +201,7 @@ int myscanf(const char *str, const char *fmt, string *s1, string *s2)
 	}
 	return n;
 }
-int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3)
+int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, std::string *s3)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -215,7 +215,7 @@ int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3
 	}
 	return n;
 }
-int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3, string *s4)
+int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, std::string *s3, std::string *s4)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -233,25 +233,25 @@ int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3
 }
 
 #if 0
-string format(const char *fmt, string s1) {
+std::string format(const char *fmt, std::string s1) {
 	return format(fmt,s1.c_str());
 }
-string format(const char *fmt, string s1, string s2) {
+std::string format(const char *fmt, std::string s1, std::string s2) {
 	return format(fmt,s1.c_str(),s2.c_str());
 }
-string format(const char *fmt, string s1, string s2, string s3) {
+std::string format(const char *fmt, std::string s1, std::string s2, std::string s3) {
 	return format(fmt,s1.c_str(),s2.c_str(),s3.c_str());
 }
-string format(const char *fmt, string s1, int i1) {
+std::string format(const char *fmt, std::string s1, int i1) {
 	return format(fmt,s1.c_str(),i1);
 }
-string format(const char *fmt, int i1, string s1) {
+std::string format(const char *fmt, int i1, std::string s1) {
 	return format(fmt,i1,s1.c_str());
 }
-string format(const char *fmt, string s1, string s2, int i1) {
+std::string format(const char *fmt, std::string s1, std::string s2, int i1) {
 	return format(fmt,s1.c_str(),s2.c_str(),i1);
 }
-string format(const char *fmt, string s1, string s2, int i1, int i2) {
+std::string format(const char *fmt, std::string s1, std::string s2, int i1, int i2) {
 	return format(fmt,s1.c_str(),s2.c_str(),i1,i2);
 }
 #endif
@@ -265,14 +265,14 @@ double timef()
 	return tv.tv_usec / 1000000.0 + tv.tv_sec;
 }
 
-const string timestr(unsigned fieldwidth)	// Use to pick the number of chars in the output.
+const std::string timestr(unsigned fieldwidth)	// Use to pick the number of chars in the output.
 {
 	struct timeval tv;
 	struct tm tm;
 	gettimeofday(&tv,NULL);
 	localtime_r(&tv.tv_sec,&tm);
 	unsigned tenths = tv.tv_usec / 100000;	// Rounding down is ok.
-	string result = format(" %02d:%02d:%02d.%1d",tm.tm_hour,tm.tm_min,tm.tm_sec,tenths);
+	std::string result = format(" %02d:%02d:%02d.%1d",tm.tm_hour,tm.tm_min,tm.tm_sec,tenths);
 	return result.substr(fieldwidth >= result.size() ? 0 : result.size() - fieldwidth);
 	//switch (maxfield) {
 	//case 'h': case 'H': return format("%02d:%02d:%02d.%1d",tm.tm_hour,tm.tm_min,tm.tm_sec,tenths);
@@ -282,7 +282,7 @@ const string timestr(unsigned fieldwidth)	// Use to pick the number of chars in 
 	//}
 }
 
-const string timestr() { return timestr(12); }
+const std::string timestr() { return timestr(12); }
 
 // High resolution sleep for the specified time.
 // Return FALSE if time is already past.
@@ -301,16 +301,16 @@ void sleepf(double howlong)
 	//sleepf(sleeptime);
 //}
 
-string Text2Str::str() const
+std::string Text2Str::str() const
 {
-	ostringstream ss;
+	std::ostringstream ss;
 	text(ss);
 	return ss.str();
 }
 
-ostream& operator<<(std::ostream& os, const Text2Str *val)
+std::ostream& operator<<(std::ostream& os, const Text2Str *val)
 {
-	ostringstream ss;
+	std::ostringstream ss;
 	if (val) {
 		val->text(ss);
 		os << ss.str(); 
@@ -379,7 +379,7 @@ char *cstrGetArg(const char *in, int nth, unsigned *length)
 }
 
 
-vector<string>& stringSplit(vector<string> &result,const char *input)
+std::vector<std::string>& stringSplit(std::vector<std::string> &result,const char *input)
 {
 	char *argv[40];
 	//char buf[202];
@@ -387,18 +387,18 @@ vector<string>& stringSplit(vector<string> &result,const char *input)
 	char *buf = strdup(input);
 	int cnt = cstrSplit(buf,argv,40,NULL);
 	for (int i = 0; i < cnt; i++) {
-		result.push_back(string(argv[i]));
+		result.push_back(std::string(argv[i]));
 	}
 	free(buf);
 	return result;
 }
 
-// Print a table formatted as a vector of vector of strings.
+// Print a table formatted as a std::vector of vector of strings.
 // The columns will be aligned.
 // Column size is determined from the columns.
 // An entry of "_" is suppressed.
 
-void printPrettyTable(prettyTable_t &tab, ostream&os, bool tabSeparated)
+void printPrettyTable(prettyTable_t &tab, std::ostream&os, bool tabSeparated)
 {
 	LOG(DEBUG);
 	const unsigned maxcols = 30;
@@ -416,7 +416,7 @@ void printPrettyTable(prettyTable_t &tab, ostream&os, bool tabSeparated)
 	}
 	// Now print it.
 	for (unsigned nrow = 0; nrow < tab.size(); nrow++) {
-		vector<string> &row = tab[nrow];
+		std::vector<std::string> &row = tab[nrow];
 
 		// DEBUG: print the column widths.
 		if (0 && IS_LOG_LEVEL(DEBUG) && nrow == 0) {
@@ -449,20 +449,20 @@ void printPrettyTable(prettyTable_t &tab, ostream&os, bool tabSeparated)
 
 
 
-ostream& operator<<(std::ostream& os, const Statistic<int> &stat) { stat.text(os); return os; }
-ostream& operator<<(std::ostream& os, const Statistic<unsigned> &stat) { stat.text(os); return os; }
-ostream& operator<<(std::ostream& os, const Statistic<float> &stat) { stat.text(os); return os; }
-ostream& operator<<(std::ostream& os, const Statistic<double> &stat) { stat.text(os); return os; }
+std::ostream& operator<<(std::ostream& os, const Statistic<int> &stat) { stat.text(os); return os; }
+std::ostream& operator<<(std::ostream& os, const Statistic<unsigned> &stat) { stat.text(os); return os; }
+std::ostream& operator<<(std::ostream& os, const Statistic<float> &stat) { stat.text(os); return os; }
+std::ostream& operator<<(std::ostream& os, const Statistic<double> &stat) { stat.text(os); return os; }
 
-string replaceAll(const std::string input, const std::string search, const std::string replace)
+std::string replaceAll(const std::string input, const std::string search, const std::string replace)
 {
-	string output = input;
+	std::string output = input;
  	unsigned index1 = 0;
 
 	while (index1 < output.size()) {
 	  try {
 		index1 = output.find(search, index1);
-		if (index1 == string::npos) {
+		if (index1 == std::string::npos) {
 			break;
 		}
 
@@ -479,9 +479,9 @@ string replaceAll(const std::string input, const std::string search, const std::
 }
 
 // Efficient string concatenation.
-string stringcat(string a, string b, string c, string d, string e, string f, string g)
+std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e, std::string f, std::string g)
 {
-	string result;
+	std::string result;
 	result.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() + g.size());
 	result.append(a);
 	result.append(b);
@@ -493,58 +493,58 @@ string stringcat(string a, string b, string c, string d, string e, string f, str
 	return result;
 }
 
-static string emptystring("");
+static std::string emptystring("");
 
-string stringcat(string a, string b) {
+std::string stringcat(std::string a, std::string b) {
 	return stringcat(a,b,emptystring,emptystring,emptystring,emptystring,emptystring);
 }
-string stringcat(string a, string b, string c) {
+std::string stringcat(std::string a, std::string b, std::string c) {
 	return stringcat(a,b,c,emptystring,emptystring,emptystring,emptystring);
 }
-string stringcat(string a, string b, string c, string d) {
+std::string stringcat(std::string a, std::string b, std::string c, std::string d) {
 	return stringcat(a,b,c,d,emptystring,emptystring,emptystring);
 }
-string stringcat(string a, string b, string c, string d, string e) {
+std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e) {
 	return stringcat(a,b,c,d,e,emptystring,emptystring);
 }
-string stringcat(string a, string b, string c, string d, string e, string f) {
+std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e, std::string f) {
 	return stringcat(a,b,c,d,e,f,emptystring);
 }
 
-void stringToUint(string strRAND, uint64_t *hRAND, uint64_t *lRAND)
+void stringToUint(std::string strRAND, uint64_t *hRAND, uint64_t *lRAND)
 {
 	assert(strRAND.size() == 32);
-	string strhRAND = strRAND.substr(0, 16);
-	string strlRAND = strRAND.substr(16, 16);
-	stringstream ssh;
-	ssh << hex << strhRAND;
+	std::string strhRAND = strRAND.substr(0, 16);
+	std::string strlRAND = strRAND.substr(16, 16);
+	std::stringstream ssh;
+	ssh << std::hex << strhRAND;
 	ssh >> *hRAND;
-	stringstream ssl;
-	ssl << hex << strlRAND;
+	std::stringstream ssl;
+	ssl << std::hex << strlRAND;
 	ssl >> *lRAND;
 }
 
-string uintToString(uint64_t h, uint64_t l)
+std::string uintToString(uint64_t h, uint64_t l)
 {
-	ostringstream os1;
+	std::ostringstream os1;
 	os1.width(16);
 	os1.fill('0');
-	os1 << hex << h;
-	ostringstream os2;
+	os1 << std::hex << h;
+	std::ostringstream os2;
 	os2.width(16);
 	os2.fill('0');
-	os2 << hex << l;
-	ostringstream os3;
+	os2 << std::hex << l;
+	std::ostringstream os3;
 	os3 << os1.str() << os2.str();
 	return os3.str();
 }
 
-string uintToString(uint32_t x)
+std::string uintToString(uint32_t x)
 {
-	ostringstream os;
+	std::ostringstream os;
 	os.width(8);
 	os.fill('0');
-	os << hex << x;
+	os << std::hex << x;
 	return os.str();
 }
 };
