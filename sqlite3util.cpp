@@ -17,6 +17,9 @@
 using namespace std;
 
 
+// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
+
+
 // Wrappers to sqlite operations.
 // These will eventually get moved to commonlibs.
 
@@ -36,7 +39,8 @@ int sqlite3_prepare_statement(sqlite3* DB, sqlite3_stmt **stmt, const char* quer
 		usleep(200);
 	}
         if (src) {
-                LOG(ERR)<< format("sqlite3_prepare_v2 failed code=%u for \"%s\": %s\n",src,query,sqlite3_errmsg(DB));
+				// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
+                _LOG(ERR)<< format("sqlite3_prepare_v2 failed code=%u for \"%s\": %s\n",src,query,sqlite3_errmsg(DB));
                 sqlite3_finalize(*stmt);
         }
         return src;
@@ -54,7 +58,8 @@ int sqlite3_run_query(sqlite3* DB, sqlite3_stmt *stmt, unsigned retries)
                 usleep(200);
         }
 	if ((src!=SQLITE_DONE) && (src!=SQLITE_ROW)) {
-		LOG(ERR) << format("sqlite3_run_query failed code=%u for: %s: %s\n", src, sqlite3_sql(stmt), sqlite3_errmsg(DB));
+		// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
+		_LOG(ERR) << format("sqlite3_run_query failed code=%u for: %s: %s\n", src, sqlite3_sql(stmt), sqlite3_errmsg(DB));
 	}
 	return src;
 }
@@ -338,14 +343,16 @@ bool sqlite_set_attr(sqlite3*db,const char *attr_name,const char*attr_value)
 {
 	if (! sqlite3_command(db,"CREATE TABLE IF NOT EXISTS ATTR_TABLE (ATTR_NAME TEXT PRIMARY KEY, ATTR_VALUE TEXT)")) {
 		const char *fn = sqlite3_db_filename(db,"main");
-		LOG(WARNING) << "Could not create ATTR_TABLE in database file " <<(fn?fn:"");
+		// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
+		_LOG(WARNING) << "Could not create ATTR_TABLE in database file " <<(fn?fn:"");
 		return false;
 	}
 	char query[100];
 	snprintf(query,100,"REPLACE INTO ATTR_TABLE (ATTR_NAME,ATTR_VALUE) VALUES('%s','%s')",attr_name,attr_value);
 	if (! sqlite3_command(db,query)) {
 		const char *fn = sqlite3_db_filename(db,"main");
-		LOG(WARNING) << "Could not set attribute: "<<attr_name<<"="<<attr_value <<" in database "<<(fn?fn:"");
+		// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
+		_LOG(WARNING) << "Could not set attribute: "<<attr_name<<"="<<attr_value <<" in database "<<(fn?fn:"");
 		return false;
 	}
 	return true;
