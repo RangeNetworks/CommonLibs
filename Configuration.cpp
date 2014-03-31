@@ -1243,7 +1243,7 @@ void ConfigurationKey::printDescription(const ConfigurationKey &key, ostream& os
 			os << " - scope:            must be the same across all neighbors" << std::endl;
 		}
 		if (scope & ConfigurationKey::NODESPECIFIC) {
-			os << " - scope:            specfic to each individual node" << std::endl;
+			os << " - scope:            specific to each individual node" << std::endl;
 		}
 	}
 }
