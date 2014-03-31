@@ -5,13 +5,11 @@
 #include <string.h>
 #include <ctype.h>
 
-using namespace std;
-
 //based on javascript encodeURIComponent()
-string URLEncode(const string &c)
+std::string URLEncode(const std::string &c)
 {
 	static const char *digits = "01234567890ABCDEF";
-	string retVal="";
+	std::string retVal="";
 	for (size_t i=0; i<c.length(); i++)
 	{
 		const char ch = c[i];

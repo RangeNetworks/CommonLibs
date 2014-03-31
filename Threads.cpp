@@ -33,8 +33,6 @@
 #include <errno.h>
 
 
-using namespace std;
-
 int gMutexLogLevel = LOG_INFO;	// The mutexes cannot call gConfig or gGetLoggingLevel so we have to get the log level indirectly.
 
 
@@ -51,13 +49,13 @@ void lockCout()
 {
 	gStreamLock.lock();
 	Timeval entryTime;
-	cout << entryTime << " " << pthread_self() << ": ";
+	std::cout << entryTime << " " << pthread_self() << ": ";
 }
 
 
 void unlockCout()
 {
-	cout << dec << endl << flush;
+	std::cout << dec << std::endl << flush;
 	gStreamLock.unlock();
 }
 
@@ -71,7 +69,7 @@ void lockCerr()
 
 void unlockCerr()
 {
-	cerr << dec << endl << flush;
+	cerr << dec << std::endl << flush;
 	gStreamLock.unlock();
 }
 

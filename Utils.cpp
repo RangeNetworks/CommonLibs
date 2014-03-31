@@ -26,7 +26,6 @@
 #include "MemoryLeak.h"
 
 namespace Utils {
-using namespace std;
 
 // (pat) This definition must be in the .cpp file to anchor the class vtable.
 RefCntBase::~RefCntBase() { LOG(DEBUG) << typeid(this).name(); }
@@ -78,7 +77,7 @@ void MemStats::text(ostream &os)
 
 void MemStats::memChkNew(MemoryNames memIndex, const char *id)
 {
-	/*cout << "new " #type "\n";*/
+	/*std::cout << "new " #type "\n";*/
 	ScopedLock lock(memChkLock);
 	mMemNow[memIndex]++;
 	mMemTotal[memIndex]++;
@@ -88,7 +87,7 @@ void MemStats::memChkNew(MemoryNames memIndex, const char *id)
 void MemStats::memChkDel(MemoryNames memIndex, const char *id)
 {
 	ScopedLock lock(memChkLock);
-	/*cout << "del " #type "\n";*/
+	/*std::cout << "del " #type "\n";*/
 	mMemNow[memIndex]--;
 	if (mMemNow[memIndex] < 0) {
 		LOG(ERR) << "Memory reference count underflow on type "<<id;
@@ -445,7 +444,7 @@ void printPrettyTable(prettyTable_t &tab, ostream&os, bool tabSeparated)
 		}
 		os << "\n";
 	}
-	os << endl;
+	os << std::endl;
 }
 
 
