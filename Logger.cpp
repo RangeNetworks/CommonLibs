@@ -47,6 +47,7 @@ std::list<std::string>    alarmsList;
 void            addAlarm(const std::string&);
 //@}
 
+pid_t gPid = 0;
 
 
 // (pat) If Log messages are printed before the classes in this module are inited
