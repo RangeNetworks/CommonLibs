@@ -57,17 +57,10 @@ namespace Utils { const std::string timestr(); };
 #endif // !defined(gettid)
 
 extern pid_t gPid;
-typedef std::map<pthread_t,pid_t> PthreadPidMap;
-extern PthreadPidMap gPthreadTidMap;
-extern RWLock gPthreadTidLock;
 
 #define _LOG(level) \
 	Log(LOG_##level).get() << "pid(" << gPid << "), " \
-        << "tid(" \
-        << gPthreadTidLock.rlock() \
-        << gPthreadTidMap[pthread_self()] \
-        << gPthreadTidLock.unlock() \
-        << ") " \
+        << "tid(" << gettid() << ") " \
 	<< Utils::timestr() << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
 
 // (pat) If you '#define LOG_GROUP groupname' before including Logger.h, then you can set Log.Level.groupname as well as Log.Level.filename.
@@ -149,12 +142,6 @@ class Log {
 	Log(int wPriority)
 		:mPriority(wPriority), mDummyInit(false)
 	{
-            gPthreadTidLock.rlock();
-            if (gPthreadTidMap[pthread_self()] == 0)
-            {
-                gPthreadTidMap[pthread_self()] = gettid();
-            }
-            gPthreadTidLock.unlock();
         }
 
 	// (pat) This constructor is not used to construct a Log record, it is called once per application
