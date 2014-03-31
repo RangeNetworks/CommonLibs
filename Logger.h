@@ -181,6 +181,7 @@ class LogGroup {
 		GSM,
 		GPRS,
 		Layer2,
+		SMS,
 		_NumberOfLogGroups
 	};
 #if UNUSED

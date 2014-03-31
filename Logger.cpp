@@ -335,7 +335,7 @@ LogGroup::Group LogGroup::groupNameToIndex(const char *groupName) const
 LogGroup::LogGroup() { LogGroupInit(); }
 
 // These must match LogGroup::Group.
-const char *LogGroup::mGroupNames[] = { "Control", "SIP", "GSM", "GPRS", "Layer2", NULL };
+const char *LogGroup::mGroupNames[] = { "Control", "SIP", "GSM", "GPRS", "Layer2", "SMS", NULL };
 
 void LogGroup::LogGroupInit()
 {
