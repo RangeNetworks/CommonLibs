@@ -31,6 +31,7 @@
 #include <cstdio>
 #include <sys/select.h>
 
+#include "Defines.h"
 #include "Threads.h"
 #include "Sockets.h"
 #include "Logger.h"
@@ -208,6 +209,7 @@ int DatagramSocket::read(char* buffer)
 	    (struct sockaddr*)&mSource,&temp_len);
 	if ((length==-1) && (errno!=EAGAIN)) {
 		perror("DatagramSocket::read() failed");
+		devassert(0);
 		throw SocketError();
 	}
 	return length;
@@ -225,6 +227,7 @@ int DatagramSocket::read(char* buffer, unsigned timeout)
 	int sel = select(mSocketFD+1,&fds,NULL,NULL,&tv);
 	if (sel<0) {
 		perror("DatagramSocket::read() select() failed");
+		devassert(0);
 		throw SocketError();
 	}
 	if (sel==0) return -1;
@@ -266,6 +269,7 @@ void UDPSocket::open(unsigned short localPort)
 	mSocketFD = socket(AF_INET,SOCK_DGRAM,0);
 	if (mSocketFD<0) {
 		perror("socket() failed");
+		devassert(0);
 		throw SocketError();
 	}
 
@@ -285,6 +289,7 @@ void UDPSocket::open(unsigned short localPort)
 		char buf[100];
 		sprintf(buf,"bind(port %d) failed",localPort);
 		perror(buf);
+		devassert(0);
 		throw SocketError();
 	}
 }
@@ -296,7 +301,10 @@ unsigned short UDPSocket::port() const
 	struct sockaddr_in name;
 	socklen_t nameSize = sizeof(name);
 	int retVal = getsockname(mSocketFD, (struct sockaddr*)&name, &nameSize);
-	if (retVal==-1) throw SocketError();
+	if (retVal==-1) {
+		devassert(0);
+		throw SocketError();
+	}
 	return ntohs(name.sin_port);
 }
 
@@ -319,6 +327,7 @@ void UDDSocket::open(const char* localPath)
 	mSocketFD = socket(AF_UNIX,SOCK_DGRAM,0);
 	if (mSocketFD<0) {
 		perror("socket() failed");
+		devassert(0);
 		throw SocketError();
 	}
 
@@ -333,6 +342,7 @@ void UDDSocket::open(const char* localPath)
 		char buf[1100];
 		sprintf(buf,"bind(path %s) failed",localPath);
 		perror(buf);
+		devassert(0);
 		throw SocketError();
 	}
 }
