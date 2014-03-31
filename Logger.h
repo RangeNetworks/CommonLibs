@@ -90,8 +90,9 @@ extern pid_t gPid;
 #define LOGVAR(var) (" " #var "=") << var
 #define LOGVARM(var) " " << &#var[1] << "=" << var      // Strip the first char ("m") off the var name when printing.
 #define LOGVARP(var) (" " #var "=(") << var <<")"   // Put value in parens; used for classes.
-#define LOGHEX(var) (" " #var "=0x") << hex << ((unsigned)var) << dec
-#define LOGHEX2(name,val) " " << name << "=0x" << hex << ((unsigned)(val)) << dec
+// (pat) 3-2014: Use (unsigned long) for LOGHEX so it can be used for pointers with 64-bit compiler.  What a choke.
+#define LOGHEX(var) (" " #var "=0x") << hex << ((unsigned long)var) << dec
+#define LOGHEX2(name,val) " " << name << "=0x" << hex << ((unsigned long)(val)) << dec
 // These are kind of cheesy, but you can use for bitvector
 #define LOGBV2(name,val) " " << name << "=(" << val<<" size:"<<val.size()<<")"
 #define LOGBV(bv) LOGBV2(#bv,bv)
