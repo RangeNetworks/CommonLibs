@@ -47,6 +47,7 @@ std::list<std::string>    alarmsList;
 void            addAlarm(const std::string&);
 //@}
 
+// (pat 3-2014) Note that the logger is used by multiple programs.
 pid_t gPid = 0;
 
 
@@ -286,6 +287,7 @@ void gLogInit(const char* name, const char* level, int facility)
 	if (level) {
 		gConfig.set("Log.Level",level);
 	}
+	gPid = getpid();
 
 	// Pat added, tired of the syslog facility.
 	// Both the transceiver and OpenBTS use this same facility, but only OpenBTS/OpenNodeB may use this log file:

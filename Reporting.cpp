@@ -208,7 +208,8 @@ bool ReportingTable::commit()
 extern ReportingTable gReports;
 void* reportingBatchCommitter(void*)
 {
-	while (true) {
+	gReports.mReportRunning = true;
+	while (gReports.mReportRunning) {
 		sleep(10);
 		gReports.commit();
 	}

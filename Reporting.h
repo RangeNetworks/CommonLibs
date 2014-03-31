@@ -52,6 +52,7 @@ class ReportingTable {
 
 
 	public:
+	bool mReportRunning;
 
 	/**
 		Open the database connection;
@@ -91,6 +92,8 @@ class ReportingTable {
 
 	/** Commit outstanding report updates to the database */
 	bool commit();
+
+	void reportShutdown() { mReportRunning = false; }
 };
 
 /** Periodically triggers ReportingTable::commit(). */
