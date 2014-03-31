@@ -18,3 +18,5 @@ SocketsTest
 TimevalTest
 URLEncodeTest
 VectorTest
+SelfDetectTest
+UnixSignalTest

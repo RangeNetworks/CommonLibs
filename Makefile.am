@@ -31,8 +31,11 @@ EXTRA_DIST = \
 noinst_LTLIBRARIES = libcommon.la
 
 libcommon_la_SOURCES = \
+	Variables.cpp \
 	BitVector.cpp \
 	LinkedLists.cpp \
+	SelfDetect.cpp \
+	UnixSignal.cpp \
 	Sockets.cpp \
 	Threads.cpp \
 	Timeval.cpp \
@@ -46,6 +49,8 @@ libcommon_la_SOURCES = \
 noinst_PROGRAMS = \
 	BitVectorTest \
 	InterthreadTest \
+	SelfDetectTest \
+	UnixSignalTest \
 	SocketsTest \
 	TimevalTest \
 	RegexpTest \
@@ -62,6 +67,9 @@ noinst_HEADERS = \
 	BitVector.h \
 	Interthread.h \
 	LinkedLists.h \
+	SelfDetect.h \
+	UnixSignal.h \
+	Exit.h \
 	Sockets.h \
 	Threads.h \
 	Timeval.h \
@@ -100,6 +108,12 @@ RegexpTest_LDADD = libcommon.la
 
 ConfigurationTest_SOURCES = ConfigurationTest.cpp
 ConfigurationTest_LDADD = libcommon.la 	$(SQLITE_LA)
+
+SelfDetectTest_SOURCES = SelfDetectTest.cpp
+SelfDetectTest_LDADD = libcommon.la $(SQLITE_LA)
+
+UnixSignalTest_SOURCES = UnixSignalTest.cpp
+UnixSignalTest_LDADD = libcommon.la $(SQLITE_LA)
 
 # ReportingTest_SOURCES = ReportingTest.cpp
 # ReportingTest_LDADD = libcommon.la $(SQLITE_LA)
