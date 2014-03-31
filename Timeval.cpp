@@ -27,6 +27,8 @@
 
 #include "Timeval.h"
 
+using namespace std;
+
 void Timeval::future(unsigned offset)	// In msecs
 {
 	now();
@@ -77,15 +79,15 @@ long Timeval::delta(const Timeval& other) const
 
 
 
-std::ostream& operator<<(std::ostream& os, const Timeval& tv)
+ostream& operator<<(ostream& os, const Timeval& tv)
 {
-	os.setf( std::ios::fixed, std::ios::floatfield );
+	os.setf( ios::fixed, ios::floatfield );
 	os << tv.seconds();
 	return os;
 }
 
 
-std::ostream& operator<<(std::ostream& os, const struct timespec& ts)
+ostream& operator<<(ostream& os, const struct timespec& ts)
 {
 	os << ts.tv_sec << "," << ts.tv_nsec;
 	return os;

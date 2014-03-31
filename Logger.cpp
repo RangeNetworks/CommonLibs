@@ -36,6 +36,8 @@
 #include "Threads.h"	// pat added
 
 
+using namespace std;
+
 // Reference to a global config table, used all over the system.
 extern ConfigurationTable gConfig;
 
@@ -43,8 +45,8 @@ extern ConfigurationTable gConfig;
 /**@ The global alarms table. */
 //@{
 Mutex           alarmsLock;
-std::list<std::string>    alarmsList;
-void            addAlarm(const std::string&);
+list<string>    alarmsList;
+void            addAlarm(const string&);
 //@}
 
 // (pat 3-2014) Note that the logger is used by multiple programs.
@@ -73,7 +75,7 @@ Mutex gLogToLock;
 LogGroup gLogGroup;
 
 
-int levelStringToInt(const std::string& name)
+int levelStringToInt(const string& name)
 {
 	// Reverse search, since the numerically larger levels are more common.
 	for (int i=numLevels-1; i>=0; i--) {
@@ -92,13 +94,13 @@ int levelStringToInt(const std::string& name)
 }
 
 /** Given a string, return the corresponding level name. */
-int lookupLevel(const std::string& key)
+int lookupLevel(const string& key)
 {
-	std::string val = gConfig.getStr(key);
+	string val = gConfig.getStr(key);
 	int level = levelStringToInt(val);
 
 	if (level == -1) {
-		std::string defaultLevel = gConfig.mSchema["Log.Level"].getDefaultValue();
+		string defaultLevel = gConfig.mSchema["Log.Level"].getDefaultValue();
 		level = levelStringToInt(defaultLevel);
 		_LOG(CRIT) << "undefined logging level (" << key << " = \"" << val << "\") defaulting to \"" << defaultLevel << ".\" Valid levels are: EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO or DEBUG";
 		gConfig.set(key, defaultLevel);
@@ -114,7 +116,7 @@ int getLoggingLevel(const char* filename)
 	if (!filename) return lookupLevel("Log.Level");
 
 	// This can afford to be inefficient since it is not called that often.
-	const std::string keyName = std::string("Log.Level.") + std::string(filename);
+	const string keyName = string("Log.Level.") + string(filename);
 	if (gConfig.defines(keyName)) return lookupLevel(keyName);
 	return lookupLevel("Log.Level");
 }
@@ -122,7 +124,7 @@ int getLoggingLevel(const char* filename)
 //bool gCheckGroupLogLevel(const char *groupname, int loglevel)
 //{
 //	// Gag me
-//	std::string keyName = std::string("Log.Group.") + groupname;
+//	string keyName = string("Log.Group.") + groupname;
 //	return gConfig.defines(keyName) ? (lookupLevel(gConfig.getStr(keyName)) >= loglevel) : false;
 //}
 
@@ -133,7 +135,7 @@ int gGetLoggingLevel(const char* filename)
 	// This is called a lot and needs to be efficient.
 
 	static Mutex sLogCacheLock;
-	static std::map<uint64_t,int>  sLogCache;
+	static map<uint64_t,int>  sLogCache;
 	static unsigned sCacheCount;
 	static const unsigned sCacheRefreshCount = 1000;
 
@@ -149,7 +151,7 @@ int gGetLoggingLevel(const char* filename)
 		sCacheCount=0;
 	}
 	// Is it cached already?
-	std::map<uint64_t,int>::const_iterator where = sLogCache.find(key);
+	map<uint64_t,int>::const_iterator where = sLogCache.find(key);
 	sCacheCount++;
 	if (where!=sLogCache.end()) {
 		int retVal = where->second;
@@ -162,7 +164,7 @@ int gGetLoggingLevel(const char* filename)
 	sLogCacheLock.unlock();
 	int level = getLoggingLevel(filename);
 	sLogCacheLock.lock();
-	sLogCache.insert(std::pair<uint64_t,int>(key,level));
+	sLogCache.insert(pair<uint64_t,int>(key,level));
 	sLogCacheLock.unlock();
 	return level;
 }
@@ -172,20 +174,20 @@ int gGetLoggingLevel(const char* filename)
 
 
 // copies the alarm list and returns it. list supposed to be small.
-std::list<std::string> gGetLoggerAlarms()
+list<string> gGetLoggerAlarms()
 {
     alarmsLock.lock();
-    std::list<std::string> ret;
+    list<string> ret;
     // excuse the "complexity", but to use std::copy with a list you need
     // an insert_iterator - copy technically overwrites, doesn't insert.
-    std::insert_iterator< std::list<std::string> > ii(ret, ret.begin());
+    insert_iterator< list<string> > ii(ret, ret.begin());
     copy(alarmsList.begin(), alarmsList.end(), ii);
     alarmsLock.unlock();
     return ret;
 }
 
 /** Add an alarm to the alarm list. */
-void addAlarm(const std::string& s)
+void addAlarm(const string& s)
 {
     alarmsLock.lock();
     alarmsList.push_back(s);
@@ -202,7 +204,7 @@ Log::~Log()
 	// Save alarms in the local list and echo them to stderr.
 	if (mPriority <= LOG_CRIT) {
 		if (sLoggerInited) addAlarm(mStream.str().c_str());
-		std::cerr << mStream.str() << std::endl;
+		cerr << mStream.str() << endl;
 	}
 	// Current logging level was already checked by the macro.
 	// So just log.
@@ -244,7 +246,7 @@ Log::Log(const char* name, const char* level, int facility)
 }
 
 
-std::ostringstream& Log::get()
+ostringstream& Log::get()
 {
 	assert(mPriority<numLevels);
 	mStream << levelNames[mPriority] <<  ' ';
@@ -291,7 +293,7 @@ void gLogInit(const char* name, const char* level, int facility)
 
 	// Pat added, tired of the syslog facility.
 	// Both the transceiver and OpenBTS use this same facility, but only OpenBTS/OpenNodeB may use this log file:
-	std::string str = gConfig.getStr("Log.File");
+	string str = gConfig.getStr("Log.File");
 	if (gLogToFile==0 && str.length() && 0==strncmp(gCmdName,"Open",4)) {
 		const char *fn = str.c_str();
 		if (fn && *fn && strlen(fn)>3) {	// strlen because a garbage char is getting in sometimes.
@@ -371,7 +373,7 @@ static const char *LogGroupPrefix = "Log.Group.";
 #if UNUSED
 // Return true if this was a LogGroup config parameter.
 // These dont have to be fast.
-bool LogGroup::setGroup(const std::string groupName, const std::string levelName)
+bool LogGroup::setGroup(const string groupName, const string levelName)
 {
 	const int len = strlen(LogGroupPrefix);
 	if (0 != strncasecmp(groupName.c_str(),LogGroupPrefix,len)) { return false; }
@@ -383,13 +385,13 @@ bool LogGroup::setGroup(const std::string groupName, const std::string levelName
 	}
 
 	//GroupMapType::iterator it = mGroupNameToIndex.find(groupName);
-	//if (it != std::map::end) {
+	//if (it != map::end) {
 	//	mDebugLevel[it->second] = lookupLevel(levelName);
 	//}
 	return true;
 }
 
-bool LogGroup::unsetGroup(const std::string groupName)
+bool LogGroup::unsetGroup(const string groupName)
 {
 	const int len = strlen(LogGroupPrefix);
 	if (0 != strncasecmp(groupName.c_str(),LogGroupPrefix,len)) { return false; }
@@ -401,7 +403,7 @@ bool LogGroup::unsetGroup(const std::string groupName)
 	}
 
 	//GroupMapType::iterator it = mGroupNameToIndex.find(groupName);
-	//if (it != std::map::end) {
+	//if (it != map::end) {
 	//	mDebugLevel[it->second] = lookupLevel(levelName);
 	//}
 	return true;
@@ -411,11 +413,11 @@ bool LogGroup::unsetGroup(const std::string groupName)
 void LogGroup::setAll()
 {
 	LOG(DEBUG);
-	std::string prefix = std::string(LogGroupPrefix);
+	string prefix = string(LogGroupPrefix);
 	for (unsigned g = 0; g < _NumberOfLogGroups; g++) {
-		std::string param = prefix + mGroupNames[g];
+		string param = prefix + mGroupNames[g];
 		if (gConfig.defines(param)) {
-			std::string levelName = gConfig.getStr(param);
+			string levelName = gConfig.getStr(param);
 			LOG(DEBUG) << "Setting "<<LOGVAR(param)<<LOGVAR(levelName);
 			//mDebugLevel[g] = lookupLevel(levelName);
 			mDebugLevel[g] = levelStringToInt(levelName);

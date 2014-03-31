@@ -32,6 +32,8 @@
 #include <sstream>
 #include <string.h>
 
+using namespace std;
+
 
 
 BitVector::BitVector(const char *valString)
@@ -236,7 +238,7 @@ void BitVector::unmap(const unsigned *map, size_t mapSize, BitVector& dest) cons
 
 
 
-std::ostream& operator<<(std::ostream& os, const BitVector& hv)
+ostream& operator<<(ostream& os, const BitVector& hv)
 {
 	for (size_t i=0; i<hv.size(); i++) {
 		if (hv.bit(i)) os << '1';
@@ -339,7 +341,7 @@ float SoftVector::getSNR() const
 }
 
 
-std::ostream& operator<<(std::ostream& os, const SoftVector& sv)
+ostream& operator<<(ostream& os, const SoftVector& sv)
 {
 	for (size_t i=0; i<sv.size(); i++) {
 		if (sv[i]<0.25) os << "0";
@@ -378,7 +380,7 @@ void BitVector::unpack(const unsigned char* src)
         fillField(whole,src[bytes] >> (8-rem),rem);
 }
 
-void BitVector::hex(std::ostream& os) const
+void BitVector::hex(ostream& os) const
 {
 	os << std::hex;
 	unsigned digits = size()/4;

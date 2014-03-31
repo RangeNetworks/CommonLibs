@@ -32,6 +32,8 @@
 #include "Configuration.h"
 ConfigurationTable gConfig;
 
+using namespace std;
+
 typedef Vector<int> TestVector;
 int barfo;
 void foo(TestVector a)
@@ -40,16 +42,16 @@ void foo(TestVector a)
 }
 void anotherTest()
 {
-	std::cout << "START Vector anotherTest" << std::endl;
+	cout << "START Vector anotherTest" << endl;
 	TestVector v0(10);
 	TestVector atest = v0.head(3);
-	std::cout << atest << std::endl;
-	std::cout << "calling head" << std::endl;
-	std::cout << v0.head(3) << std::endl;
-	std::cout << "Passing Vector" << std::endl;
+	cout << atest << endl;
+	cout << "calling head" << endl;
+	cout << v0.head(3) << endl;
+	cout << "Passing Vector" << endl;
 	// This calls the Vector non-const copy constructor
 	foo(v0);
-	std::cout << "FINISH anotherTest" << std::endl;
+	cout << "FINISH anotherTest" << endl;
 }
 
 int main(int argc, char *argv[])
@@ -60,26 +62,26 @@ int main(int argc, char *argv[])
 	TestVector test2(5);
 	for (int i=0; i<5; i++) test2[i]=10+i;
 
-	std::cout << test1 << std::endl;
-	std::cout << test2 << std::endl;
+	cout << test1 << endl;
+	cout << test2 << endl;
 
 	{
 		TestVector testC(test1,test2);
-		std::cout << testC << std::endl;
+		cout << testC << endl;
 
 		TestVector foo = testC.head(3);
-		//std::cout << testC.head(3) << std::endl;
-		std::cout << testC.tail(3) << std::endl;
+		//cout << testC.head(3) << endl;
+		cout << testC.tail(3) << endl;
 		testC.fill(8);
-		std::cout << testC << std::endl;
+		cout << testC << endl;
 		test1.copyToSegment(testC,3);
-		std::cout << testC << std::endl;
+		cout << testC << endl;
 
 		TestVector testD(testC.segment(4,3));
-		std::cout << testD << std::endl;
+		cout << testD << endl;
 		testD.fill(9);
-		std::cout << testC << std::endl;
-		std::cout << testD << std::endl;
+		cout << testC << endl;
+		cout << testD << endl;
 	}
 
 	return 0;

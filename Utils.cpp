@@ -26,6 +26,7 @@
 #include "MemoryLeak.h"
 
 namespace Utils {
+using namespace std;
 
 // (pat) This definition must be in the .cpp file to anchor the class vtable.
 RefCntBase::~RefCntBase() { LOG(DEBUG) << typeid(this).name(); }
@@ -67,7 +68,7 @@ MemStats::MemStats()
 	memset(mMemName,0,sizeof(mMemName));
 }
 
-void MemStats::text(std::ostream &os)
+void MemStats::text(ostream &os)
 {
 	os << "Structs current total:\n";
 	for (int i = 0; i < mMax; i++) {
@@ -77,7 +78,7 @@ void MemStats::text(std::ostream &os)
 
 void MemStats::memChkNew(MemoryNames memIndex, const char *id)
 {
-	/*std::cout << "new " #type "\n";*/
+	/*cout << "new " #type "\n";*/
 	ScopedLock lock(memChkLock);
 	mMemNow[memIndex]++;
 	mMemTotal[memIndex]++;
@@ -87,7 +88,7 @@ void MemStats::memChkNew(MemoryNames memIndex, const char *id)
 void MemStats::memChkDel(MemoryNames memIndex, const char *id)
 {
 	ScopedLock lock(memChkLock);
-	/*std::cout << "del " #type "\n";*/
+	/*cout << "del " #type "\n";*/
 	mMemNow[memIndex]--;
 	if (mMemNow[memIndex] < 0) {
 		LOG(ERR) << "Memory reference count underflow on type "<<id;
@@ -96,12 +97,12 @@ void MemStats::memChkDel(MemoryNames memIndex, const char *id)
 	}
 }
 
-std::ostream& operator<<(std::ostream& os, std::ostringstream& ss)
+ostream& operator<<(std::ostream& os, std::ostringstream& ss)
 {
 	return os << ss.str();
 }
 
-std::ostream &osprintf(std::ostream &os, const char *fmt, ...)
+ostream &osprintf(std::ostream &os, const char *fmt, ...)
 {
 	va_list ap;
 	char buf[300];
@@ -113,16 +114,16 @@ std::ostream &osprintf(std::ostream &os, const char *fmt, ...)
 	return os;
 }
 
-std::string format(const char *fmt, ...)
+string format(const char *fmt, ...)
 {
 	va_list ap;
 	char buf[200];
 	va_start(ap,fmt);
 	int n = vsnprintf(buf,199,fmt,ap);
 	va_end(ap);
-	std::string result;
+	string result;
 	if (n <= 199) {
-		result = std::string(buf);
+		result = string(buf);
 	} else {
 		if (n > 5000) { LOG(ERR) << "oversized string in format"; n = 5000; }
 		// We could use vasprintf but we already computed the length...
@@ -132,12 +133,12 @@ std::string format(const char *fmt, ...)
 		vsnprintf(buffer,n+1,fmt,ap);
 		va_end(ap);
 		//if (n >= (2000-4)) { strcpy(&buf[(2000-4)],"..."); }
-		result = std::string(buffer);
+		result = string(buffer);
 		free(buffer);
 	}
 	return result;
 #if 0	// Maybe ok, but not recommended.  data() is const char*
-	std::string result;
+	string result;
 	va_list ap;
 	va_start(ap,fmt);
 	result.reserve(200);
@@ -156,16 +157,16 @@ std::string format(const char *fmt, ...)
 }
 
 // Absolutely identical to format above.  This sucks...
-std::string format1(const char *fmt, ...)
+string format1(const char *fmt, ...)
 {
 	va_list ap;
 	char buf[200];
 	va_start(ap,fmt);
 	int n = vsnprintf(buf,199,fmt,ap);
 	va_end(ap);
-	std::string result;
+	string result;
 	if (n <= 199) {
-		result = std::string(buf);
+		result = string(buf);
 	} else {
 		if (n > 5000) { LOG(ERR) << "oversized string in format"; n = 5000; }
 		// We could use vasprintf but we already computed the length...
@@ -175,13 +176,13 @@ std::string format1(const char *fmt, ...)
 		vsnprintf(buffer,n+1,fmt,ap);
 		va_end(ap);
 		//if (n >= (2000-4)) { strcpy(&buf[(2000-4)],"..."); }
-		result = std::string(buffer);
+		result = string(buffer);
 		free(buffer);
 	}
 	return result;
 }
 
-int myscanf(const char *str, const char *fmt, std::string *s1)
+int myscanf(const char *str, const char *fmt, string *s1)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -189,7 +190,7 @@ int myscanf(const char *str, const char *fmt, std::string *s1)
 	s1->assign(a1);
 	return n;
 }
-int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2)
+int myscanf(const char *str, const char *fmt, string *s1, string *s2)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -201,7 +202,7 @@ int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2)
 	}
 	return n;
 }
-int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, std::string *s3)
+int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -215,7 +216,7 @@ int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, 
 	}
 	return n;
 }
-int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, std::string *s3, std::string *s4)
+int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3, string *s4)
 {
 	int maxlen = strlen(str)+1;
 	char *a1 = (char*)alloca(maxlen);
@@ -233,25 +234,25 @@ int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, 
 }
 
 #if 0
-std::string format(const char *fmt, std::string s1) {
+string format(const char *fmt, string s1) {
 	return format(fmt,s1.c_str());
 }
-std::string format(const char *fmt, std::string s1, std::string s2) {
+string format(const char *fmt, string s1, string s2) {
 	return format(fmt,s1.c_str(),s2.c_str());
 }
-std::string format(const char *fmt, std::string s1, std::string s2, std::string s3) {
+string format(const char *fmt, string s1, string s2, string s3) {
 	return format(fmt,s1.c_str(),s2.c_str(),s3.c_str());
 }
-std::string format(const char *fmt, std::string s1, int i1) {
+string format(const char *fmt, string s1, int i1) {
 	return format(fmt,s1.c_str(),i1);
 }
-std::string format(const char *fmt, int i1, std::string s1) {
+string format(const char *fmt, int i1, string s1) {
 	return format(fmt,i1,s1.c_str());
 }
-std::string format(const char *fmt, std::string s1, std::string s2, int i1) {
+string format(const char *fmt, string s1, string s2, int i1) {
 	return format(fmt,s1.c_str(),s2.c_str(),i1);
 }
-std::string format(const char *fmt, std::string s1, std::string s2, int i1, int i2) {
+string format(const char *fmt, string s1, string s2, int i1, int i2) {
 	return format(fmt,s1.c_str(),s2.c_str(),i1,i2);
 }
 #endif
@@ -265,14 +266,14 @@ double timef()
 	return tv.tv_usec / 1000000.0 + tv.tv_sec;
 }
 
-const std::string timestr(unsigned fieldwidth, bool addDate)	// Use to pick the number of chars in the output.
+const string timestr(unsigned fieldwidth, bool addDate)	// Use to pick the number of chars in the output.
 {
 	struct timeval tv;
 	struct tm tm;
 	gettimeofday(&tv,NULL);
 	localtime_r(&tv.tv_sec,&tm);
 	unsigned tenths = tv.tv_usec / 100000;	// Rounding down is ok.
-	std::string result;
+	string result;
 	if (addDate)
 	    result = format(" %04d/%02d/%02d %02d:%02d:%02d.%1d",
 		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
@@ -288,7 +289,7 @@ const std::string timestr(unsigned fieldwidth, bool addDate)	// Use to pick the 
 	//}
 }
 
-const std::string timestr() { return timestr(12); }
+const string timestr() { return timestr(12); }
 
 // High resolution sleep for the specified time.
 // Return FALSE if time is already past.
@@ -307,16 +308,16 @@ void sleepf(double howlong)
 	//sleepf(sleeptime);
 //}
 
-std::string Text2Str::str() const
+string Text2Str::str() const
 {
-	std::ostringstream ss;
+	ostringstream ss;
 	text(ss);
 	return ss.str();
 }
 
-std::ostream& operator<<(std::ostream& os, const Text2Str *val)
+ostream& operator<<(std::ostream& os, const Text2Str *val)
 {
-	std::ostringstream ss;
+	ostringstream ss;
 	if (val) {
 		val->text(ss);
 		os << ss.str(); 
@@ -385,7 +386,7 @@ char *cstrGetArg(const char *in, int nth, unsigned *length)
 }
 
 
-std::vector<std::string>& stringSplit(std::vector<std::string> &result,const char *input)
+vector<string>& stringSplit(vector<string> &result,const char *input)
 {
 	char *argv[40];
 	//char buf[202];
@@ -393,18 +394,18 @@ std::vector<std::string>& stringSplit(std::vector<std::string> &result,const cha
 	char *buf = strdup(input);
 	int cnt = cstrSplit(buf,argv,40,NULL);
 	for (int i = 0; i < cnt; i++) {
-		result.push_back(std::string(argv[i]));
+		result.push_back(string(argv[i]));
 	}
 	free(buf);
 	return result;
 }
 
-// Print a table formatted as a std::vector of vector of strings.
+// Print a table formatted as a vector of vector of strings.
 // The columns will be aligned.
 // Column size is determined from the columns.
 // An entry of "_" is suppressed.
 
-void printPrettyTable(prettyTable_t &tab, std::ostream&os, bool tabSeparated)
+void printPrettyTable(prettyTable_t &tab, ostream&os, bool tabSeparated)
 {
 	LOG(DEBUG);
 	const unsigned maxcols = 30;
@@ -412,17 +413,17 @@ void printPrettyTable(prettyTable_t &tab, std::ostream&os, bool tabSeparated)
 	int width[maxcols]; memset(width,0,sizeof(width));
 	if (!tabSeparated) {
 	  for (prettyTable_t::iterator it = tab.begin(); it != tab.end(); ++it) {
-		std::vector<std::string> &row = *it;
+		vector<string> &row = *it;
 		for (unsigned col = 0; col<maxcols && col<row.size(); col++) {
 			int colwidth = row[col].size();
 			if (colwidth > 100) colwidth = 100;
-			width[col] = std::max(width[col],colwidth);
+			width[col] = max(width[col],colwidth);
 		}
 	  }
 	}
 	// Now print it.
 	for (unsigned nrow = 0; nrow < tab.size(); nrow++) {
-		std::vector<std::string> &row = tab[nrow];
+		vector<string> &row = tab[nrow];
 
 		// DEBUG: print the column widths.
 		if (0 && IS_LOG_LEVEL(DEBUG) && nrow == 0) {
@@ -450,25 +451,25 @@ void printPrettyTable(prettyTable_t &tab, std::ostream&os, bool tabSeparated)
 		}
 		os << "\n";
 	}
-	os << std::endl;
+	os << endl;
 }
 
 
 
-std::ostream& operator<<(std::ostream& os, const Statistic<int> &stat) { stat.text(os); return os; }
-std::ostream& operator<<(std::ostream& os, const Statistic<unsigned> &stat) { stat.text(os); return os; }
-std::ostream& operator<<(std::ostream& os, const Statistic<float> &stat) { stat.text(os); return os; }
-std::ostream& operator<<(std::ostream& os, const Statistic<double> &stat) { stat.text(os); return os; }
+ostream& operator<<(std::ostream& os, const Statistic<int> &stat) { stat.text(os); return os; }
+ostream& operator<<(std::ostream& os, const Statistic<unsigned> &stat) { stat.text(os); return os; }
+ostream& operator<<(std::ostream& os, const Statistic<float> &stat) { stat.text(os); return os; }
+ostream& operator<<(std::ostream& os, const Statistic<double> &stat) { stat.text(os); return os; }
 
-std::string replaceAll(const std::string input, const std::string search, const std::string replace)
+string replaceAll(const std::string input, const std::string search, const std::string replace)
 {
-	std::string output = input;
+	string output = input;
  	unsigned index1 = 0;
 
 	while (index1 < output.size()) {
 	  try {
 		index1 = output.find(search, index1);
-		if (index1 == std::string::npos) {
+		if (index1 == string::npos) {
 			break;
 		}
 
@@ -485,9 +486,9 @@ std::string replaceAll(const std::string input, const std::string search, const 
 }
 
 // Efficient string concatenation.
-std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e, std::string f, std::string g)
+string stringcat(string a, string b, string c, string d, string e, string f, string g)
 {
-	std::string result;
+	string result;
 	result.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() + g.size());
 	result.append(a);
 	result.append(b);
@@ -499,58 +500,58 @@ std::string stringcat(std::string a, std::string b, std::string c, std::string d
 	return result;
 }
 
-static std::string emptystring("");
+static string emptystring("");
 
-std::string stringcat(std::string a, std::string b) {
+string stringcat(string a, string b) {
 	return stringcat(a,b,emptystring,emptystring,emptystring,emptystring,emptystring);
 }
-std::string stringcat(std::string a, std::string b, std::string c) {
+string stringcat(string a, string b, string c) {
 	return stringcat(a,b,c,emptystring,emptystring,emptystring,emptystring);
 }
-std::string stringcat(std::string a, std::string b, std::string c, std::string d) {
+string stringcat(string a, string b, string c, string d) {
 	return stringcat(a,b,c,d,emptystring,emptystring,emptystring);
 }
-std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e) {
+string stringcat(string a, string b, string c, string d, string e) {
 	return stringcat(a,b,c,d,e,emptystring,emptystring);
 }
-std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e, std::string f) {
+string stringcat(string a, string b, string c, string d, string e, string f) {
 	return stringcat(a,b,c,d,e,f,emptystring);
 }
 
-void stringToUint(std::string strRAND, uint64_t *hRAND, uint64_t *lRAND)
+void stringToUint(string strRAND, uint64_t *hRAND, uint64_t *lRAND)
 {
 	assert(strRAND.size() == 32);
-	std::string strhRAND = strRAND.substr(0, 16);
-	std::string strlRAND = strRAND.substr(16, 16);
-	std::stringstream ssh;
-	ssh << std::hex << strhRAND;
+	string strhRAND = strRAND.substr(0, 16);
+	string strlRAND = strRAND.substr(16, 16);
+	stringstream ssh;
+	ssh << hex << strhRAND;
 	ssh >> *hRAND;
-	std::stringstream ssl;
-	ssl << std::hex << strlRAND;
+	stringstream ssl;
+	ssl << hex << strlRAND;
 	ssl >> *lRAND;
 }
 
-std::string uintToString(uint64_t h, uint64_t l)
+string uintToString(uint64_t h, uint64_t l)
 {
-	std::ostringstream os1;
+	ostringstream os1;
 	os1.width(16);
 	os1.fill('0');
-	os1 << std::hex << h;
-	std::ostringstream os2;
+	os1 << hex << h;
+	ostringstream os2;
 	os2.width(16);
 	os2.fill('0');
-	os2 << std::hex << l;
-	std::ostringstream os3;
+	os2 << hex << l;
+	ostringstream os3;
 	os3 << os1.str() << os2.str();
 	return os3.str();
 }
 
-std::string uintToString(uint32_t x)
+string uintToString(uint32_t x)
 {
-	std::ostringstream os;
+	ostringstream os;
 	os.width(8);
 	os.fill('0');
-	os << std::hex << x;
+	os << hex << x;
 	return os.str();
 }
 };

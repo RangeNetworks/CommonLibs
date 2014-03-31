@@ -36,40 +36,40 @@ extern const std::string timestr(unsigned fieldwidth, bool addDate = false);		//
 extern void sleepf(double howlong);	// high resolution sleep
 extern int gcd(int x, int y);
 
-std::string format(const char *fmt, ...) __attribute__((format (printf,1,2)));
+string format(const char *fmt, ...) __attribute__((format (printf,1,2)));
 
 // format1 used to prevent C++ confusion over what function to call here.
-std::string format1(const char *fmt, ...) __attribute__((format (printf,1,2)));
+string format1(const char *fmt, ...) __attribute__((format (printf,1,2)));
 // We have to enumerate the cross product of argument types here.  This is fixed in C++11.
-inline std::string format(const char *fmt, std::string s1) {
+inline string format(const char *fmt, string s1) {
 	return format1(fmt,s1.c_str());
 }
-inline std::string format(const char *fmt, std::string s1, std::string s2) {
+inline string format(const char *fmt, string s1, string s2) {
 	return format1(fmt,s1.c_str(),s2.c_str());
 }
-inline std::string format(const char *fmt, std::string s1, std::string s2, std::string s3) {
+inline string format(const char *fmt, string s1, string s2, string s3) {
 	return format1(fmt,s1.c_str(),s2.c_str(),s3.c_str());
 }
-inline std::string format(const char *fmt, std::string s1, std::string s2, std::string s3, std::string s4) {
+inline string format(const char *fmt, string s1, string s2, string s3, string s4) {
 	return format1(fmt,s1.c_str(),s2.c_str(),s3.c_str(),s4.c_str());
 }
-inline std::string format(const char *fmt, std::string s1, int i1) {
+inline string format(const char *fmt, string s1, int i1) {
 	return format1(fmt,s1.c_str(),i1);
 }
-inline std::string format(const char *fmt, int i1, std::string s1) {
+inline string format(const char *fmt, int i1, string s1) {
 	return format1(fmt,i1,s1.c_str());
 }
-inline std::string format(const char *fmt, std::string s1, std::string s2, int i1) {
+inline string format(const char *fmt, string s1, string s2, int i1) {
 	return format1(fmt,s1.c_str(),s2.c_str(),i1);
 }
-inline std::string format(const char *fmt, std::string s1, std::string s2, int i1, int i2) {
+inline string format(const char *fmt, string s1, string s2, int i1, int i2) {
 	return format1(fmt,s1.c_str(),s2.c_str(),i1,i2);
 }
 
-int myscanf(const char *str, const char *fmt, std::string *s1);
-int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2);
-int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, std::string *s3);
-int myscanf(const char *str, const char *fmt, std::string *s1, std::string *s2, std::string *s3, std::string *s4);
+int myscanf(const char *str, const char *fmt, string *s1);
+int myscanf(const char *str, const char *fmt, string *s1, string *s2);
+int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3);
+int myscanf(const char *str, const char *fmt, string *s1, string *s2, string *s3, string *s4);
 
 int cstrSplit(char *in, char **pargv,int maxargc, const char *splitchars=NULL);
 char *cstrGetArg(const char *in, int nth, unsigned *length);
@@ -178,21 +178,21 @@ std::ostream &osprintf(std::ostream &os, const char *fmt, ...) __attribute__((fo
 
 std::string replaceAll(const std::string input, const std::string search, const std::string replace);
 
-std::vector<std::string>& stringSplit(std::vector<std::string> &result,const char *input);
-typedef std::vector<std::vector<std::string> > prettyTable_t;
-void printPrettyTable(prettyTable_t &tab, std::ostream&os, bool tabSeparated = false);
+vector<string>& stringSplit(vector<string> &result,const char *input);
+typedef vector<vector<string> > prettyTable_t;
+void printPrettyTable(prettyTable_t &tab, ostream&os, bool tabSeparated = false);
 
 // The need for this is eliminated in C++11.
-std::string stringcat(std::string a, std::string b);
-std::string stringcat(std::string a, std::string b, std::string c);
-std::string stringcat(std::string a, std::string b, std::string c, std::string d);
-std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e);
-std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e, std::string f);
-std::string stringcat(std::string a, std::string b, std::string c, std::string d, std::string e, std::string f, std::string g);
+string stringcat(string a, string b);
+string stringcat(string a, string b, string c);
+string stringcat(string a, string b, string c, string d);
+string stringcat(string a, string b, string c, string d, string e);
+string stringcat(string a, string b, string c, string d, string e, string f);
+string stringcat(string a, string b, string c, string d, string e, string f, string g);
 
-extern void stringToUint(std::string strRAND, uint64_t *hRAND, uint64_t *lRAND);
-extern std::string uintToString(uint64_t h, uint64_t l);
-extern std::string uintToString(uint32_t x);
+extern void stringToUint(string strRAND, uint64_t *hRAND, uint64_t *lRAND);
+extern string uintToString(uint64_t h, uint64_t l);
+extern string uintToString(uint32_t x);
 
 // The class is created with a RefCnt of 0.  The caller must assign the constructed result to a pointer
 // of type RefCntPointer.  When the last RefCntPointer is freed, this struct is too.

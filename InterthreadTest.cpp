@@ -31,6 +31,8 @@
 #include "Configuration.h"
 ConfigurationTable gConfig;
 
+using namespace std;
+
 
 InterthreadQueue<int> gQ;
 InterthreadMap<int,int> gMap;

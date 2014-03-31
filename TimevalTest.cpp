@@ -29,15 +29,17 @@
 #include "Timeval.h"
 #include <iostream>
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
 
 	Timeval then(10000);
-	std::cout << then.elapsed() << std::endl;
+	cout << then.elapsed() << endl;
 
 	while (!then.passed()) {
-		std::cout << "now: " << Timeval() << " then: " << then << " remaining: " << then.remaining() << std::endl;
+		cout << "now: " << Timeval() << " then: " << then << " remaining: " << then.remaining() << endl;
 		usleep(500000);
 	}
-	std::cout << "now: " << Timeval() << " then: " << then << " remaining: " << then.remaining() << std::endl;
+	cout << "now: " << Timeval() << " then: " << then << " remaining: " << then.remaining() << endl;
 }

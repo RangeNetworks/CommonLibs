@@ -135,8 +135,7 @@ class Log {
 
 	Log(int wPriority)
 		:mPriority(wPriority), mDummyInit(false)
-	{
-        }
+	{ }
 
 	// (pat) This constructor is not used to construct a Log record, it is called once per application
 	// to init the syslog facility.  This is a very poor use of C++.

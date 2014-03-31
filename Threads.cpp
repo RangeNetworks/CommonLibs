@@ -33,6 +33,8 @@
 #include <errno.h>
 
 
+using namespace std;
+
 int gMutexLogLevel = LOG_INFO;	// The mutexes cannot call gConfig or gGetLoggingLevel so we have to get the log level indirectly.
 
 
@@ -49,13 +51,13 @@ void lockCout()
 {
 	gStreamLock.lock();
 	Timeval entryTime;
-	std::cout << entryTime << " " << pthread_self() << ": ";
+	cout << entryTime << " " << pthread_self() << ": ";
 }
 
 
 void unlockCout()
 {
-	std::cout << std::dec << std::endl << std::flush;
+	cout << dec << endl << flush;
 	gStreamLock.unlock();
 }
 
@@ -64,12 +66,12 @@ void lockCerr()
 {
 	gStreamLock.lock();
 	Timeval entryTime;
-	std::cerr << entryTime << " " << pthread_self() << ": ";
+	cerr << entryTime << " " << pthread_self() << ": ";
 }
 
 void unlockCerr()
 {
-	std::cerr << std::dec << std::endl << std::flush;
+	cerr << dec << endl << flush;
 	gStreamLock.unlock();
 }
 
@@ -119,9 +121,9 @@ bool Mutex::timedlock(int msecs) // Wait this long in milli-seconds.
 	return ETIMEDOUT != pthread_mutex_timedlock(&mMutex, &timeout);
 }
 
-std::string Mutex::mutext() const
+string Mutex::mutext() const
 {
-	std::string result;
+	string result;
 	result.reserve(100);
 	//result += format("lockid=%u lockcnt=%d",(unsigned)this,mLockCnt);
 	result += format("lockcnt=%d",mLockCnt);

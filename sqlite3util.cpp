@@ -14,6 +14,8 @@
 
 #include <string>
 #include <vector>
+using namespace std;
+
 
 // Wrappers to sqlite operations.
 // These will eventually get moved to commonlibs.
@@ -119,13 +121,13 @@ sqlQuery::~sqlQuery()
 	if (mStmt) sqlite3_finalize(mStmt);
 }
 
-std::string sqlQuery::getResultText(int colNum)
+string sqlQuery::getResultText(int colNum)
 {
 	if (sqlSuccess()) {
 		const char* ptr = (const char*)sqlite3_column_text(mStmt,colNum);
-		return ptr ? std::string(ptr,sqlite3_column_bytes(mStmt,colNum)) : std::string("");
+		return ptr ? string(ptr,sqlite3_column_bytes(mStmt,colNum)) : string("");
 	}
-	return std::string("");
+	return string("");
 }
 
 sqlite3_int64 sqlQuery::getResultInt(int colNum)
@@ -206,16 +208,16 @@ sqlite3_stmt *sqlite_lookup_row_u(sqlite3*db, const char *tableName, const char*
 	return sqlite_lookup_row(db,tableName,condition_u(conditionBuffer,keyName,keyValue),resultColumns);
 }
 // Pass a comma-separated list of column names to return, or if you want all the columns in the result, pass "*" as the resultColumns.
-std::vector<std::string> sqlite_multi_lookup_vector(sqlite3* db, const char* tableName, const char* keyName, const char* keyData, const char *resultColumns)
+vector<string> sqlite_multi_lookup_vector(sqlite3* db, const char* tableName, const char* keyName, const char* keyData, const char *resultColumns)
 {
-	std::vector<std::string> result;
+	vector<string> result;
 	if (sqlite3_stmt *stmt = sqlite_lookup_row_c(db,tableName,keyName,keyData,resultColumns)) {
 		int n = sqlite3_column_count(stmt);
 		if (n < 0 || n > 100) { goto done; }	// Would like to LOG an error but afraid to use LOG in here.
 		result.reserve(n+1);
 		for (int i = 0; i < n; i++) {
 			const char* ptr = (const char*)sqlite3_column_text(stmt,i);
-			result.push_back(ptr ? std::string(ptr,sqlite3_column_bytes(stmt,i)) : std::string(""));
+			result.push_back(ptr ? string(ptr,sqlite3_column_bytes(stmt,i)) : string(""));
 		}
 		done:
 		sqlite3_finalize(stmt);
@@ -227,7 +229,7 @@ std::vector<std::string> sqlite_multi_lookup_vector(sqlite3* db, const char* tab
 
 bool sqlite_single_lookup(sqlite3* db, const char* tableName,
 		const char* keyName, const char* keyData,
-		const char* resultName, std::string &resultData)
+		const char* resultName, string &resultData)
 {
 	sqlQuery query(db,tableName,resultName,keyName,keyData);
 	if (query.sqlSuccess()) {
@@ -238,7 +240,7 @@ bool sqlite_single_lookup(sqlite3* db, const char* tableName,
 #if 0
 	if (sqlite3_stmt *stmt = sqlite_lookup_row_c(db,tableName,keyName,keyData,valueName)) {
 		if (const char* ptr = (const char*)sqlite3_column_text(stmt,0)) {
-			valueData = std::string(ptr,sqlite3_column_bytes(stmt,0));
+			valueData = string(ptr,sqlite3_column_bytes(stmt,0));
 		}
 		sqlite3_finalize(stmt);
 		return true;
@@ -249,7 +251,7 @@ bool sqlite_single_lookup(sqlite3* db, const char* tableName,
 
 bool sqlite_single_lookup(sqlite3* db, const char* tableName,
 		const char* keyName, unsigned keyValue,
-		const char* resultName, std::string &resultData)
+		const char* resultName, string &resultData)
 {
 	sqlQuery query(db,tableName,resultName,keyName,keyValue);
 	if (query.sqlSuccess()) {
@@ -260,7 +262,7 @@ bool sqlite_single_lookup(sqlite3* db, const char* tableName,
 #if 0
 	if (sqlite3_stmt *stmt = sqlite_lookup_row_u(db,tableName,keyName,keyValue,valueName)) {
 		if (const char* ptr = (const char*)sqlite3_column_text(stmt,0)) {
-			valueData = std::string(ptr,sqlite3_column_bytes(stmt,0));
+			valueData = string(ptr,sqlite3_column_bytes(stmt,0));
 		}
 		sqlite3_finalize(stmt);
 		return true;
@@ -271,12 +273,12 @@ bool sqlite_single_lookup(sqlite3* db, const char* tableName,
 
 // Do the lookup and just return the string.
 // For this function an empty value is indistinguishable from failure - both return an empty string.
-std::string sqlite_single_lookup_string(sqlite3* db, const char* tableName,
+string sqlite_single_lookup_string(sqlite3* db, const char* tableName,
 		const char* keyName, const char* keyData, const char* resultName)
 {
 	return sqlQuery(db,tableName,resultName,keyName,keyData).getResultText();
 #if 0
-	std::string result;
+	string result;
 	(void) sqlite_single_lookup(db,tableName,keyName,keyData,valueName,result);
 	return result;
 #endif
@@ -349,7 +351,7 @@ bool sqlite_set_attr(sqlite3*db,const char *attr_name,const char*attr_value)
 	return true;
 }
 
-std::string sqlite_get_attr(sqlite3*db,const char *attr_name)
+string sqlite_get_attr(sqlite3*db,const char *attr_name)
 {
 	return sqlite_single_lookup_string(db,"ATTR_TABLE","ATTR_NAME",attr_name,"ATTR_VALUE");
 }
