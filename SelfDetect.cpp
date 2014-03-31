@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "UnixSignal.h"
 #include "SelfDetect.h"
@@ -53,11 +54,10 @@ static void sigfcn(int sig)
 
 void SelfDetect::RegisterProgram(const char *argv0)
 {
-    const char *p = argv0 + strlen(argv0); // point to end of string
-    while (p > argv0 && *p != '/') p--;
-    if (*p == '/') p++;
+    const char *p = strrchr((char*)argv0,'/');
+	if (p == NULL) { p = argv0; }
 
-    char buf[BUFSIZ];
+    char buf[100];
     snprintf(buf, sizeof(buf)-1, "/var/run/%s.pid", p);
     LOG(NOTICE) << "*** Registering program " << argv0 << " to " << buf;
 
@@ -65,17 +65,15 @@ void SelfDetect::RegisterProgram(const char *argv0)
     struct stat stbuf;
     if (stat(buf, &stbuf) >= 0)
     {
-	LOG(ERR) << "*** An instance of " << p << " is already running. ";
-	LOG(ERR) << "*** If this is not the case, deleting this file will allow " << p << " to start: " << buf;
-	std::cout << "*** An instance of " << p << " is already running. " << std::endl;
-	std::cout << "*** If this is not the case, deleting this file will allow " << p << " to start: " << buf << std::endl;
+	LOG(CRIT) << "*** An instance of " << p << " is already running. ";
+	LOG(CRIT) << "*** If this is not the case, deleting this file will allow " << p << " to start: " << buf << " exiting...";
 	Exit::exit(Exit::DETECTFILE);
     }
     
     FILE *fp = fopen(buf, "w");
     if (fp == NULL)
     {
-    	LOG(ERR) << "*** Unable to create " << buf << ": " << strerror(errno);
+    	LOG(CRIT) << "*** Unable to create " << buf << ": " << strerror(errno) << " exiting...";
 		Exit::exit(Exit::CREATEFILE);
     }
     fprintf(fp, "%d\n", getpid());
