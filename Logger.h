@@ -43,12 +43,18 @@
 #include <map>
 #include <string>
 #include <assert.h>
+#include <sys/syscall.h>
+
 // We cannot include Utils.h because it includes Logger.h, so just declare timestr() here.
 // If timestr decl is changed G++ will whine when Utils.h is included.
 namespace Utils { const std::string timestr(); };
 
+#if !defined(gettid)
+# define gettid() syscall(SYS_gettid)
+#endif // !defined(gettid)
+
 #define _LOG(level) \
-	Log(LOG_##level).get() << pthread_self() \
+	Log(LOG_##level).get() << "pid(" << getpid() << "), tid(" << gettid() << ") " \
 	<< Utils::timestr() << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
 
 // (pat) If you '#define LOG_GROUP groupname' before including Logger.h, then you can set Log.Level.groupname as well as Log.Level.filename.

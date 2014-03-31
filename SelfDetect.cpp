@@ -111,7 +111,7 @@ void SelfDetect::RegisterProgram(const char *argv0)
 
 void SelfDetect::Exit(int sig)
 {
-	LOG(NOTICE) << "*** Terminating because of signal " << sig;
+    LOG(NOTICE) << "*** Terminating because of signal " << sig;
 
     if (mProg == NULL)
     {
