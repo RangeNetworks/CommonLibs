@@ -380,7 +380,7 @@ void LogGroup::LogGroupInit()
 static const char *LogGroupPrefix = "Log.Group.";
 
 
-// Set all the Log.Group debug levels.
+// Set all the Log.Group debug levels based on database settings
 void LogGroup::setAll()
 {
 	LOG(DEBUG);
