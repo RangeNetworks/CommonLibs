@@ -165,21 +165,14 @@ class LogGroup {
 		SMS,
 		_NumberOfLogGroups
 	};
-#if UNUSED
-	bool unsetGroup(const std::string groupName);
-	bool setGroup(const std::string groupName, const std::string levelName);
-#endif
 	void setAll();	// Update mDebugLevel from the Log.Group.... config database options.
 
-	uint8_t mDebugLevel[_NumberOfLogGroups];
+	int8_t mDebugLevel[_NumberOfLogGroups];	// use int in case a -1 value gets in here.
 	LogGroup();
 	void LogGroupInit();
 	private:
 	static const char *mGroupNames[_NumberOfLogGroups+1];	// We add a NULL at the end.
-	Group groupNameToIndex(const char *) const;
-
-	//typedef std::map<std::string,Group> GroupMapType;
-	//GroupMapType mGroupNameToIndex;
+	Group groupNameToIndex(const char *) const;		// unused.
 };
 extern LogGroup gLogGroup;
 
@@ -187,7 +180,7 @@ extern LogGroup gLogGroup;
 static __inline__ bool gCheckGroupLogLevel(LogGroup::Group group, unsigned level) {
 	assert(group < LogGroup::_NumberOfLogGroups);
 	//_LOG(DEBUG) << LOGVAR(group)<<LOGVAR(level)<<LOGVAR2("stashed",(unsigned) gLogGroup.mDebugLevel[group]);
-	return gLogGroup.mDebugLevel[group] >= level;
+	return gLogGroup.mDebugLevel[group] >= (int) level;
 }
 
 

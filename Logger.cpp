@@ -95,19 +95,24 @@ int levelStringToInt(const string& name)
 }
 
 /** Given a string, return the corresponding level name. */
-int lookupLevel(const string& key)
+static int lookupLevel2(const string& key, const string &keyVal)
 {
-	string val = gConfig.getStr(key);
-	int level = levelStringToInt(val);
+	int level = levelStringToInt(keyVal);
 
 	if (level == -1) {
 		string defaultLevel = gConfig.mSchema["Log.Level"].getDefaultValue();
 		level = levelStringToInt(defaultLevel);
-		_LOG(CRIT) << "undefined logging level (" << key << " = \"" << val << "\") defaulting to \"" << defaultLevel << ".\" Valid levels are: EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO or DEBUG";
+		_LOG(CRIT) << "undefined logging level (" << key << " = \"" << keyVal << "\") defaulting to \"" << defaultLevel << ".\" Valid levels are: EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO or DEBUG";
 		gConfig.set(key, defaultLevel);
 	}
 
 	return level;
+}
+
+static int lookupLevel(const string& key)
+{
+	string val = gConfig.getStr(key);
+	return lookupLevel2(key,val);
 }
 
 
@@ -117,18 +122,20 @@ int getLoggingLevel(const char* filename)
 	if (!filename) return lookupLevel("Log.Level");
 
 	// This can afford to be inefficient since it is not called that often.
-	const string keyName = string("Log.Level.") + string(filename);
-	if (gConfig.defines(keyName)) return lookupLevel(keyName);
+	string keyName;
+	keyName.reserve(100);
+	keyName.append("Log.Level.");
+	keyName.append(filename);
+	if (gConfig.defines(keyName)) {
+		string keyVal = gConfig.getStr(keyName);
+		// (pat 4-2014) The CLI 'unconfig' command does not unset the value, it just gives an empty value,
+		// so check for that and treat it as an unset value, ie, do nothing.
+		if (keyVal.size()) {
+			return lookupLevel2(keyName,keyVal);
+		}
+	}
 	return lookupLevel("Log.Level");
 }
-
-//bool gCheckGroupLogLevel(const char *groupname, int loglevel)
-//{
-//	// Gag me
-//	string keyName = string("Log.Group.") + groupname;
-//	return gConfig.defines(keyName) ? (lookupLevel(gConfig.getStr(keyName)) >= loglevel) : false;
-//}
-
 
 
 int gGetLoggingLevel(const char* filename)
@@ -373,58 +380,23 @@ void LogGroup::LogGroupInit()
 static const char *LogGroupPrefix = "Log.Group.";
 
 
-#if UNUSED
-// Return true if this was a LogGroup config parameter.
-// These dont have to be fast.
-bool LogGroup::setGroup(const string groupName, const string levelName)
-{
-	const int len = strlen(LogGroupPrefix);
-	if (0 != strncasecmp(groupName.c_str(),LogGroupPrefix,len)) { return false; }
-	Group g = groupNameToIndex(groupName.c_str() + len);
-	if (g >= _NumberOfLogGroups) {
-		LOG(ALERT) << "Unrecognized Log.Group config parameter:"<<groupName;
-	} else {
-		mDebugLevel[g] = lookupLevel(levelName);
-	}
-
-	//GroupMapType::iterator it = mGroupNameToIndex.find(groupName);
-	//if (it != map::end) {
-	//	mDebugLevel[it->second] = lookupLevel(levelName);
-	//}
-	return true;
-}
-
-bool LogGroup::unsetGroup(const string groupName)
-{
-	const int len = strlen(LogGroupPrefix);
-	if (0 != strncasecmp(groupName.c_str(),LogGroupPrefix,len)) { return false; }
-	Group g = groupNameToIndex(groupName.c_str() + len);
-	if (g >= _NumberOfLogGroups) {
-		LOG(ALERT) << "Unrecognized Log.Group config parameter:"<<groupName;
-	} else {
-		mDebugLevel[g] = 0;	// Turn off debugging.
-	}
-
-	//GroupMapType::iterator it = mGroupNameToIndex.find(groupName);
-	//if (it != map::end) {
-	//	mDebugLevel[it->second] = lookupLevel(levelName);
-	//}
-	return true;
-}
-#endif
-
+// Set all the Log.Group debug levels.
 void LogGroup::setAll()
 {
 	LOG(DEBUG);
 	string prefix = string(LogGroupPrefix);
 	for (unsigned g = 0; g < _NumberOfLogGroups; g++) {
+		int level = 0;
 		string param = prefix + mGroupNames[g];
 		if (gConfig.defines(param)) {
 			string levelName = gConfig.getStr(param);
-			LOG(DEBUG) << "Setting "<<LOGVAR(param)<<LOGVAR(levelName);
-			//mDebugLevel[g] = lookupLevel(levelName);
-			mDebugLevel[g] = levelStringToInt(levelName);
+			// (pat) The "unconfig" command does not remove the value, it just gives it an empty value, so check for that.
+			if (levelName.size()) {
+				//LOG(DEBUG) << "Setting "<<LOGVAR(param)<<LOGVAR(levelName);
+				level = lookupLevel2(param,levelName);
+			}
 		}
+		mDebugLevel[g] = level;
 	}
 }
 
