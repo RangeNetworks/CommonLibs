@@ -42,4 +42,11 @@ int main(int argc, char *argv[])
 		usleep(500000);
 	}
 	cout << "now: " << Timeval() << " then: " << then << " remaining: " << then.remaining() << endl;
+
+        time_t t = time(NULL);
+        std::string sLocal("");
+        std::string sGMT("");
+        Timeval::isoTime(t, sLocal, true);
+        Timeval::isoTime(t, sGMT);
+        cout << "Localtime: " << sLocal << ", GMT: " << sGMT << std::endl;
 }

@@ -275,7 +275,8 @@ const string timestr(unsigned fieldwidth, bool addDate)	// Use to pick the numbe
 	unsigned tenths = tv.tv_usec / 100000;	// Rounding down is ok.
 	string result;
 	if (addDate)
-	    result = format(" %04d/%02d/%02d %02d:%02d:%02d.%1d",
+	    // ISO time but with a fractional seconds number
+	    result = format(" %04d-%02d-%02dT%02d:%02d:%02d.%1d",
 		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec, tenths);
 	else

@@ -10,7 +10,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 
-	string test = string("Testing: !@#$%^&*() " __DATE__ " " __TIME__);
+	string test = string("Testing: !@#$%^&*() " TIMESTAMP_ISO);
 	cout << test << endl;
 	cout << URLEncode(test) << endl;
 }

@@ -32,6 +32,7 @@
 #include <stdarg.h>
 
 #include "Configuration.h"
+#include "Timeval.h"
 #include "Logger.h"
 #include "Threads.h"	// pat added
 
@@ -266,9 +267,10 @@ void gLogInitWithFile(const char* name, const char* level, int facility, char * 
 	if (gLogToFile==0 && LogFilePath != 0 && *LogFilePath != 0 && strlen(LogFilePath) > 0) {
 		gLogToFile = fopen(LogFilePath,"w"); // New log file each time we start.
 		if (gLogToFile) {
-			time_t now;
-			time(&now);
-			fprintf(gLogToFile,"Starting at %s",ctime(&now));
+			time_t now = time(NULL);
+                        std::string result;
+                        Timeval::isoTime(now, result);
+			fprintf(gLogToFile,"Starting at %s",result.c_str());
 			fflush(gLogToFile);
 			std::cout << name <<" logging to file: " << LogFilePath << "\n";
 		}
@@ -299,9 +301,10 @@ void gLogInit(const char* name, const char* level, int facility)
 		if (fn && *fn && strlen(fn)>3) {	// strlen because a garbage char is getting in sometimes.
 			gLogToFile = fopen(fn,"w"); // New log file each time we start.
 			if (gLogToFile) {
-				time_t now;
-				time(&now);
-				fprintf(gLogToFile,"Starting at %s",ctime(&now));
+                                time_t now = time(NULL);
+                                std::string result;
+                                Timeval::isoTime(now, result);
+                                fprintf(gLogToFile,"Starting at %s",result.c_str());
 				fflush(gLogToFile);
 				std::cout << name <<" logging to file: " << fn << "\n";
 			}

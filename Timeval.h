@@ -94,6 +94,12 @@ class Timeval {
 	/** Add a given number of minutes to the time. */
 	void addMinutes(unsigned minutes) { mTimeval.tv_sec += minutes*60; }
 
+        /** Convert a time_t into a formatted string, using the ISO
+         *  YYYY-MM-DDTHH:MM:SS[Z] format.  If isLocal is true, use localtime,
+         *  otherwise, use gmtime.
+         */
+        static void isoTime(time_t t, std::string &result, bool isLocal = false);
+
 };
 
 std::ostream& operator<<(std::ostream& os, const Timeval&);
