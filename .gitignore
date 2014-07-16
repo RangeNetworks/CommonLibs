@@ -20,3 +20,5 @@ URLEncodeTest
 VectorTest
 SelfDetectTest
 UnixSignalTest
+ThreadTest
+UtilsTest
