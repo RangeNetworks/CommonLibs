@@ -1,5 +1,6 @@
 /*
 * Copyright 2008, 2009, 2014 Free Software Foundation, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -123,7 +124,7 @@ class BitVector : public VectorBase<char>
 	//@{
 
 	/**@name Casts of Vector constructors. */
-	BitVector(VectorDataType wData, char* wStart, char* wEnd) : VectorBase(wData, wStart, wEnd) {}
+	BitVector(VectorDataType wData, char* wStart, char* wEnd) : VectorBase<char>(wData, wStart, wEnd) {}
 
 	// The one and only copy-constructor.
 	BitVector(const BitVector&other) : VectorBase<char>() {

@@ -1,5 +1,6 @@
 /*
 * Copyright 2008, 2009, 2014 Free Software Foundation, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 *
 * This software is distributed under the terms of the GNU Affero Public License.
@@ -346,6 +347,7 @@ float SoftVector::getSNR() const
 	if (sumSquaresNoise * 1000 < sumSquaresSignal) return 999;
 	return sumSquaresSignal / sumSquaresNoise;
 }
+
 
 
 ostream& operator<<(ostream& os, const SoftVector& sv)

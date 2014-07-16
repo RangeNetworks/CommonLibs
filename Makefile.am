@@ -1,6 +1,6 @@
 #
 # Copyright 2008, 2009 Free Software Foundation, Inc.
-# Copyright 2011, 2012 Range Networks, Inc.
+# Copyright 2011, 2012, 2014 Range Networks, Inc.
 #
 # This software is distributed under the terms of the GNU Public License.
 # See the COPYING file in the main directory for details.
@@ -22,7 +22,7 @@
 include $(top_srcdir)/Makefile.common
 
 AM_CPPFLAGS = $(STD_DEFINES_AND_INCLUDES)
-AM_CXXFLAGS = -Wall -O3 -g -ldl -lpthread
+AM_CXXFLAGS = -Wall -O3 -g -ldl -lpthread -lsqlite3
 
 EXTRA_DIST = \
 	example.config \
@@ -47,6 +47,8 @@ libcommon_la_SOURCES = \
 	Utils.cpp
 
 noinst_PROGRAMS = \
+	UtilsTest \
+	ThreadTest \
 	BitVectorTest \
 	InterthreadTest \
 	SelfDetectTest \
@@ -82,6 +84,9 @@ noinst_HEADERS = \
 	Utils.h \
 	Logger.h \
 	sqlite3util.h
+
+ThreadTest_SOURCES = ThreadTest.cpp
+ThreadTest_LDADD = libcommon.la $(SQLITE_LA)
 
 URLEncodeTest_SOURCES = URLEncodeTest.cpp
 URLEncodeTest_LDADD = libcommon.la
@@ -122,6 +127,9 @@ LogTest_SOURCES = LogTest.cpp
 LogTest_LDADD = libcommon.la $(SQLITE_LA)
 
 F16Test_SOURCES = F16Test.cpp
+
+UtilsTest_SOURCES = UtilsTest.cpp
+UtilsTest_LDADD = libcommon.la
 
 MOSTLYCLEANFILES += testSource testDestination
 

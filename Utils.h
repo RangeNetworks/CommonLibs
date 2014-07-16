@@ -4,7 +4,7 @@
 *
 * This software is distributed under multiple licenses;
 * see the COPYING file in the main directory for licensing
-* information for this specific distribuion.
+* information for this specific distribution.
 *
 * This use of this software may be subject to additional restrictions.
 * See the LEGAL file in the main directory for details.
@@ -194,9 +194,11 @@ extern void stringToUint(string strRAND, uint64_t *hRAND, uint64_t *lRAND);
 extern string uintToString(uint64_t h, uint64_t l);
 extern string uintToString(uint32_t x);
 
+//template <class Type> class RefCntPointer;
 // The class is created with a RefCnt of 0.  The caller must assign the constructed result to a pointer
 // of type RefCntPointer.  When the last RefCntPointer is freed, this struct is too.
 class RefCntBase {
+	template <class Type> friend class RefCntPointer;
 	Mutex mRefMutex;
 	mutable short mRefCnt;		// signed, not unsigned!
 	int setRefCnt(int val) { return mRefCnt = val; }
@@ -206,14 +208,20 @@ class RefCntBase {
 	RefCntBase(RefCntBase &) { assert(0); }
 	RefCntBase(const RefCntBase &) { assert(0); }
 	RefCntBase operator=(RefCntBase &) {assert(0); mRefCnt = 0; return *this; }
+	int decRefCnt();	// Only RefCntPointer is permitted to use incRefCnt and decRefCnt.
+	void incRefCnt();
 	public:
 	virtual ~RefCntBase();
 	RefCntBase() : mRefCnt(0) {}
 	int getRefCnt() const { return mRefCnt; }
-	int decRefCnt();
-	void incRefCnt();
 };
 
+// This is basically the same as a C++11 shared_ptr, but we cannot use C++ 11 yet.
+// The basic idea is that once you put an object into a RefCntPointer, then destruction of that
+// object is controlled by and assured by RefCntPointer using reference counts; when the last
+// RefCntPointer referring to the object is destroyed, the object is too.
+// You can use RefCntPointer<object> similarly to an object* for most data-access purposes.
+// The auto-destruction should be optional - there should be a version that just maintains reference counts for you.
 // Semantics:
 // SomeDescendentOfRefCntBase foo;
 // RefCntPointer<SomeDescendentOfRefCntBase> ptrToFoo;
@@ -244,7 +252,8 @@ class RefCntPointer {
 	// The operator=(Type*) is called if the argument is NULL, so we dont need int.
 	//Type* operator=(int value) { assert(value == 0); rcDec(); rcPointer = 0; return rcPointer; }
 	// We increment before decrement if possible so that a = a; does not crash.
-	RefCntPointer<Type>& operator=(RefCntPointer &other) { other.rcInc(); rcDec(); rcPointer = other.rcPointer; return *this; }
+	RefCntPointer<Type>& operator=(RefCntPointer other) { other.rcInc(); rcDec(); rcPointer = other.rcPointer; return *this; }
+	// The old is the previous value of this pointer.  We do not decrement the refcnt in the other that we are taking charge of.
 	RefCntPointer<Type>& operator=(Type* other) { Type *old = rcPointer;  rcPointer = other; rcInc(); if (old) {old->decRefCnt();} return *this; }
 	bool operator==(const RefCntPointer &other) const { return rcPointer == other.rcPointer; }
 	bool operator==(const Type* other) const { return rcPointer == other; }
@@ -264,6 +273,8 @@ class RefCntPointer {
 	}
 	bool isNULL() const { return self() == NULL; }
 };
+
+extern string firstlines(string msgstr, int n=2);
 
 };	// namespace
 

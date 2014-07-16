@@ -1,6 +1,7 @@
 /*
 * Copyright 2009 Free Software Foundation, Inc.
 * Copyright 2010 Kestrel Signal Processing, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 *
 * This software is distributed under the terms of the GNU Affero Public License.

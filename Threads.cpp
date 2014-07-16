@@ -1,5 +1,6 @@
 /*
 * Copyright 2008, 2014 Free Software Foundation, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 *
 * This software is distributed under the terms of the GNU Affero Public License.
@@ -256,7 +257,15 @@ void Thread::start(void *(*task)(void*), void *arg)
         p->task = task;
         p->arg = arg;
 	res = pthread_create(&mThread, &mAttrib, &thread_main, p);
+	// (pat) Note: the error is returned and is not placed in errno.
+	if (res) { LOG(ALERT) << "pthread_create failed, error:" <<strerror(res); }
 	assert(!res);
+}
+
+void Thread::start2(void *(*task)(void*), void *arg, int stacksize)
+{
+	mStackSize = stacksize;
+	start(task,arg);
 }
 
 

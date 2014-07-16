@@ -1,10 +1,29 @@
 /*
 * Copyright 2010 Kestrel Signal Processing, Inc.
-* All rights reserved.
+* Copyright 2014 Range Networks, Inc.
+*
+* This software is distributed under the terms of the GNU Affero Public License.
+* See the COPYING file in the main directory for details.
+*
+* This use of this software may be subject to additional restrictions.
+* See the LEGAL file in the main directory for details.
+
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Affero General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Affero General Public License for more details.
+
+	You should have received a copy of the GNU Affero General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 */
 
 
-#include "sqlite3.h"
 #include "sqlite3util.h"
 #include "Logger.h"
 
@@ -342,17 +361,21 @@ bool sqlite3_single_lookup(sqlite3* DB, const char* tableName,
 bool sqlite_set_attr(sqlite3*db,const char *attr_name,const char*attr_value)
 {
 	if (! sqlite3_command(db,"CREATE TABLE IF NOT EXISTS ATTR_TABLE (ATTR_NAME TEXT PRIMARY KEY, ATTR_VALUE TEXT)")) {
-		const char *fn = sqlite3_db_filename(db,"main");
+		// (mike) 2014-06: to free ourselves of the in-tree sqlite3 code, the system library must be used.
+		//        However, sqlite3_db_filename is not available in Ubuntu 12.04. Removing dependence for now.
+		//const char *fn = sqlite3_db_filename(db,"main");
 		// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
-		_LOG(WARNING) << "Could not create ATTR_TABLE in database file " <<(fn?fn:"");
+		_LOG(WARNING) << "Could not create ATTR_TABLE in database file ";// <<(fn?fn:"");
 		return false;
 	}
 	char query[100];
 	snprintf(query,100,"REPLACE INTO ATTR_TABLE (ATTR_NAME,ATTR_VALUE) VALUES('%s','%s')",attr_name,attr_value);
 	if (! sqlite3_command(db,query)) {
-		const char *fn = sqlite3_db_filename(db,"main");
+		// (mike) 2014-06: to free ourselves of the in-tree sqlite3 code, the system library must be used.
+		//        However, sqlite3_db_filename is not available in Ubuntu 12.04. Removing dependence for now.
+		//const char *fn = sqlite3_db_filename(db,"main");
 		// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
-		_LOG(WARNING) << "Could not set attribute: "<<attr_name<<"="<<attr_value <<" in database "<<(fn?fn:"");
+		_LOG(WARNING) << "Could not set attribute: "<<attr_name<<"="<<attr_value <<" in database ";//<<(fn?fn:"");
 		return false;
 	}
 	return true;

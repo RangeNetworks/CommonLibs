@@ -1,5 +1,6 @@
 /*
 * Copyright 2008, 2011, 2014 Free Software Foundation, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -241,6 +242,7 @@ class Thread {
 
 	/** Start the thread on a task. */
 	void start(void *(*task)(void*), void *arg);
+	void start2(void *(*task)(void*), void *arg, int stacksize);
 
 	/** Join a thread that will stop on its own. */
 	void join() { int s = pthread_join(mThread,NULL); assert(!s); mThread = 0; }

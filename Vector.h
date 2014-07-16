@@ -1,6 +1,7 @@
 /**@file Simplified Vector template with aliases. */
 /*
 * Copyright 2008 Free Software Foundation, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.

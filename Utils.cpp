@@ -4,7 +4,7 @@
 *
 * This software is distributed under multiple licenses;
 * see the COPYING file in the main directory for licensing
-* information for this specific distribuion.
+* information for this specific distribution.
 *
 * This use of this software may be subject to additional restrictions.
 * See the LEGAL file in the main directory for details.
@@ -41,8 +41,10 @@ int RefCntBase::decRefCnt()
 	}	// Must not keep locked during the delete, since the Mutex itself will be deleted.
 	// The typeid(this).name() doesnt add anything because it is just the name of the class here, not the derived class.
 	LOG(DEBUG) <<" "<<(void*)this <<" " <<LOGVAR2("refcnt after",saveRefCnt);
+	//printf("decRefCnt %p mRefCnt=%d\n",this,mRefCnt);
 	// The refcnt is created with a value of zero, so when the last one is deleted it will come in with a value of zero.
 	if (saveRefCnt <= 0) {
+		//printf("decRefCnt %p deleting refcnted pointer\n",this);
 		LOG(DEBUG) << "deleting refcnted pointer "<<typeid(this).name();
 		delete this;
 	}
@@ -51,6 +53,7 @@ int RefCntBase::decRefCnt()
 void RefCntBase::incRefCnt()
 {
 	ScopedLock lock(mRefMutex);
+	//printf("incRefCnt %p before=%d\n",this,mRefCnt);
 	LOG(DEBUG) <<" "<<(void*)this <<" " <<LOGVAR2("refcnt before",mRefCnt);
 	assert(mRefCnt >= 0);
 	mRefCnt++;
@@ -554,5 +557,20 @@ string uintToString(uint32_t x)
 	os.fill('0');
 	os << hex << x;
 	return os.str();
+}
+
+
+// Return the first n lines of a string.
+string firstlines(string msgstr, int n) {	// n must be >=1
+	size_t pos = msgstr.find('\n');
+	if (pos < msgstr.size()) pos++;
+	//printf("firstlines pos=%d\n",(int)pos);
+	while (--n > 0 && pos < msgstr.size()) {
+		pos = msgstr.find('\n',pos);
+		//printf("firstlines n=%d pos=%d\n",n,(int)pos);
+		if (pos < msgstr.size()) pos++;
+	}
+	//printf("firstlines return n=%d pos=%d\n",n,(int)pos);
+	return msgstr.substr(0,pos);
 }
 };

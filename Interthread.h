@@ -1,5 +1,6 @@
 /*
 * Copyright 2008, 2011 Free Software Foundation, Inc.
+* Copyright 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -42,122 +43,6 @@
 /**@defgroup Templates for interthread mechanisms. */
 //@{
 
-
-/** Pointer FIFO for interthread operations.  */
-// (pat) The elements in the queue are type T*, and
-// the Fifo class implements the underlying queue.
-// The default is class PointerFIFO, which does not place any restrictions on the type of T,
-// and is implemented by allocating auxilliary structures for the queue,
-// or SingleLinkedList, which implements the queue using an internal pointer in type T,
-// which must implement the functional interface of class SingleLinkListNode,
-// namely: functions T*next() and void setNext(T*).
-#if UNUSED
-//template <class T, class Fifo=PointerFIFO> class InterthreadQueue {
-//
-//	protected:
-//
-//	Fifo mQ;	
-//	mutable Mutex mLock;
-//	mutable Signal mWriteSignal;
-//
-//	public:
-//
-//	/** Delete contents. */
-//	void clear()
-//	{
-//		ScopedLock lock(mLock);
-//		while (mQ.size()>0) delete (T*)mQ.get();
-//	}
-//
-//	/** Empty the queue, but don't delete. */
-//	void flushNoDelete()
-//	{
-//		ScopedLock lock(mLock);
-//		while (mQ.size()>0) mQ.get();
-//	}
-//
-//
-//	~InterthreadQueue()
-//		{ clear(); }
-//
-//
-//	size_t size() const
-//	{
-//		ScopedLock lock(mLock);
-//		return mQ.size();
-//	}
-//
-//	size_t totalSize() const		// pat added
-//	{
-//		ScopedLock lock(mLock);
-//		return mQ.totalSize();
-//	}
-//
-//	/**
-//		Blocking read.
-//		@return Pointer to object (will not be NULL).
-//	*/
-//	T* read()
-//	{
-//		ScopedLock lock(mLock);
-//		T* retVal = (T*)mQ.get();
-//		while (retVal==NULL) {
-//			mWriteSignal.wait(mLock);
-//			retVal = (T*)mQ.get();
-//		}
-//		return retVal;
-//	}
-//
-//	/** Non-blocking peek at the first element; returns NULL if empty. */
-//	T* front()
-//	{
-//		ScopedLock lock(mLock);
-//		return (T*) mQ.front();
-//	}
-//
-//	/**
-//		Blocking read with a timeout.
-//		@param timeout The read timeout in ms.
-//		@return Pointer to object or NULL on timeout.
-//	*/
-//	T* read(unsigned timeout)
-//	{
-//		if (timeout==0) return readNoBlock();
-//		Timeval waitTime(timeout);
-//		ScopedLock lock(mLock);
-//		while ((mQ.size()==0) && (!waitTime.passed()))
-//			mWriteSignal.wait(mLock,waitTime.remaining());
-//		T* retVal = (T*)mQ.get();
-//		return retVal;
-//	}
-//
-//	/**
-//		Non-blocking read.
-//		@return Pointer to object or NULL if FIFO is empty.
-//	*/
-//	T* readNoBlock()
-//	{
-//		ScopedLock lock(mLock);
-//		return (T*)mQ.get();
-//	}
-//
-//	/** Non-blocking write. */
-//	void write(T* val)
-//	{
-//		ScopedLock lock(mLock);
-//		mQ.put(val);
-//		mWriteSignal.signal();
-//	}
-//
-//	/** Non-block write to the front of the queue. */
-//	void write_front(T* val)	// pat added
-//	{
-//		ScopedLock lock(mLock);
-//		mQ.push_front(val);
-//		mWriteSignal.signal();
-//	}
-//};
-#endif
 
 // A list designed for pointers so we can use get methods that return NULL on error.
 template<class T>
@@ -365,7 +250,7 @@ template <class T, class Fifo=PtrList<T> > class InterthreadQueue {
 	T* front()
 	{
 		ScopedLock lock(*mLockPointer);
-		return (T*) mQ.front();
+		return (T*) (mQ.size() ? mQ.front() : NULL);
 	}
 
 	/**
@@ -380,7 +265,7 @@ template <class T, class Fifo=PtrList<T> > class InterthreadQueue {
 		ScopedLock lock(*mLockPointer);
 		while (mQ.size()==0) {
 			long remaining = waitTime.remaining();
-			// (pat) How high to we expect the precision here to be?  I dont think they are used a precision timers,
+			// (pat) How high do we expect the precision here to be?  I dont think they used precision timers,
 			// so dont try to wait if the remainder is just a few msecs.
 			if (remaining < 2) { return NULL;	}
 			mWriteSignalPointer->wait(*mLockPointer,remaining);
@@ -496,7 +381,7 @@ template <class T> class InterthreadQueueWithWait {
 		//	mWriteSignal.wait(mLock,waitTime.remaining());
 		while (mQ.size()==0) {
 			long remaining = waitTime.remaining();
-			// (pat) How high to we expect the precision here to be?  I dont think they are used a precision timers,
+			// (pat) How high do we expect the precision here to be?  I dont think they are used as precision timers,
 			// so dont try to wait if the remainder is just a few msecs.
 			if (remaining < 2) { return NULL; }
 			mWriteSignal.wait(mLock,remaining);
@@ -521,9 +406,10 @@ template <class T> class InterthreadQueueWithWait {
 	/** Non-blocking write. */
 	void write(T* val)
 	{
-		// (pat) 8-14: Taking out the threading problem fix temporarily for David to use in the field.
-		ScopedLock lock(mLock);
-		mQ.put(val);
+		{
+			ScopedLock lock(mLock);
+			mQ.put(val);
+		}
 		mWriteSignal.signal();
 	}
 
@@ -541,51 +427,44 @@ template <class T> class InterthreadQueueWithWait {
 };
 
 
-
-
-
-/** Thread-safe map of pointers to class D, keyed by class K. */
-template <class K, class D > class InterthreadMap
+// (pat) Same as an InterthreadMap but the mapped type is "D" instead of "D*";
+// the only difference is that we cannot automatically delete the content on destruction (no clear method).
+template <class K, class D > class InterthreadMap1
 {
 public:
-	typedef std::map<K,D*> Map;		// (pat) It would be more generally useful if this were D instead of D*
+	typedef std::map<K,D> Map;
 
 protected:
 
 	Map mMap;
 	mutable Mutex mLock;
-	//mutable Mutex mModificationLock;		// (pat) Lock prevents deletion from the map while an iterator is active.
 	Signal mWriteSignal;
 
 public:
+	// User can over-ride this method if they want to delete type D elements.
+	virtual void vdelete(D) {}
 
-	void clear()
-	{
-		// Delete everything in the map.
-		//ScopedLock lock1(mModificationLock);	// Lock this first!
+	~InterthreadMap1() {
 		ScopedLock lock(mLock);
 		typename Map::iterator iter = mMap.begin();
 		while (iter != mMap.end()) {
-			delete iter->second;
+			vdelete(iter->second);
 			++iter;
 		}
 		mMap.clear();
 	}
-
-	~InterthreadMap() { clear(); }
 
 	/**
 		Non-blocking write.  WARNING: This deletes any pre-existing element!
 		@param key The index to write to.
 		@param wData Pointer to data, not to be deleted until removed from the map.
 	*/
-	void write(const K &key, D * wData)
+	void write(const K &key, D wData)
 	{
-		//ScopedLock lock1(mModificationLock);	// Lock this first!
 		ScopedLock lock(mLock);
 		typename Map::iterator iter = mMap.find(key);
 		if (iter!=mMap.end()) {
-			delete iter->second;
+			vdelete(iter->second);
 			iter->second = wData;
 		} else {
 			mMap[key] = wData;
@@ -598,14 +477,14 @@ public:
 		@param key Key to read from.
 		@return Pointer at key or NULL if key not found, to be deleted by caller.
 	*/
-	D* getNoBlock(const K& key, bool bRemove = true)
+	bool getNoBlock(const K& key, D &result, bool bRemove = true)
 	{
 		ScopedLock lock(mLock);
 		typename Map::iterator iter = mMap.find(key);
-		if (iter==mMap.end()) return NULL;
-		D* retVal = iter->second;
+		if (iter==mMap.end()) return false;
+		result = iter->second;
 		if (bRemove) { mMap.erase(iter); }
-		return retVal;
+		return true;
 	}
 
 	/**
@@ -614,30 +493,20 @@ public:
 		@param timeout The blocking timeout in ms.
 		@return Pointer at key or NULL on timeout, to be deleted by caller.
 	*/
-	D* get(const K &key, unsigned timeout, bool bRemove = true)
+	bool get(const K &key, D &result, unsigned timeout, bool bRemove = true)
 	{
-		if (timeout==0) return getNoBlock(key,bRemove);
+		if (timeout==0) return getNoBlock(key,result,bRemove);
 		ScopedLock lock(mLock);
 		Timeval waitTime(timeout);
-		// (pat 8-2013) This commented out code suffered from a deadlock problem.
-		//typename Map::iterator iter = mMap.find(key);
-		//while ((iter==mMap.end()) && (!waitTime.passed())) {
-		//	mWriteSignal.wait(mLock,waitTime.remaining());
-		//	iter = mMap.find(key);
-		//}
-		//if (iter==mMap.end()) return NULL;
-		//D* retVal = iter->second;
-		//mMap.erase(iter);
-		//return retVal;
 		while (1) {
 			typename Map::iterator iter = mMap.find(key);
 			if (iter!=mMap.end()) {
-				D* retVal = iter->second;
+				result = iter->second;
 				if (bRemove) { mMap.erase(iter); }
-				return retVal;
+				return true;
 			}
 			long remaining = waitTime.remaining();
-			if (remaining < 2) { return NULL; }
+			if (remaining < 2) { return false; }
 			mWriteSignal.wait(mLock,remaining);
 		}
 	}
@@ -646,8 +515,9 @@ public:
 		Blocking read with and element removal.
 		@param key The key to read from.
 		@return Pointer at key, to be deleted by caller.
+		This always returns true.
 	*/
-	D* get(const K &key, bool bRemove = true)
+	bool get(const K &key, D &result, bool bRemove = true)
 	{
 		ScopedLock lock(mLock);
 		typename Map::iterator iter = mMap.find(key);
@@ -655,9 +525,9 @@ public:
 			mWriteSignal.wait(mLock);
 			iter = mMap.find(key);
 		}
-		D* retVal = iter->second;
+		result = iter->second;
 		if (bRemove) { mMap.erase(iter); }
-		return retVal;
+		return true;
 	}
 
 
@@ -669,11 +539,13 @@ public:
 	*/
 	bool remove(const  K &key )
 	{
-		//ScopedLock lock(mModificationLock);
-		D* val = getNoBlock(key);
-		if (!val) return false;
-		delete val;
-		return true;
+		D val;
+		if (getNoBlock(key,val,true)) {
+			vdelete(val);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 
@@ -682,15 +554,11 @@ public:
 		@param key Key to read from.
 		@return Pointer at key or NULL if key not found.
 	*/
-	D* readNoBlock(const K& key) const
+	D readNoBlock(const K& key) const
 	{
-		return Unconst(this)->getNoBlock(key,false);
-		// (pat 8-2013) Lets use common code.
-		//D* retVal=NULL;
-		//ScopedLock lock(mLock);
-		//typename Map::const_iterator iter = mMap.find(key);
-		//if (iter!=mMap.end()) retVal = iter->second;
-		//return retVal;
+		D result = NULL;
+		Unconst(this)->getNoBlock(key,result,false);
+		return result;
 	}
 
 	/**
@@ -699,21 +567,11 @@ public:
 		@param timeout The blocking timeout in ms.
 		@return Pointer at key or NULL on timeout.
 	*/
-	D* read(const K &key, unsigned timeout) const
+	D read(const K &key, unsigned timeout) const
 	{
-		return Unconst(this)->get(key,timeout,false);
-		// (pat 8-2013) This commented out code suffered from a deadlock problem.
-		//if (timeout==0) return readNoBlock(key);
-		//ScopedLock lock(mLock);
-		//Timeval waitTime(timeout);
-		//typename Map::const_iterator iter = mMap.find(key);
-		//while ((iter==mMap.end()) && (!waitTime.passed())) {
-		//	mWriteSignal.wait(mLock,waitTime.remaining());
-		//	iter = mMap.find(key);
-		//}
-		//if (iter==mMap.end()) return NULL;
-		//D* retVal = iter->second;
-		//return retVal;
+		D result = NULL;
+		Unconst(this)->get(key,result,timeout,false);
+		return result;
 	}
 
 	/**
@@ -721,32 +579,18 @@ public:
 		@param key The key to read from.
 		@return Pointer at key.
 	*/
-	D* read(const K &key) const
+	D read(const K &key) const
 	{
-		return Unconst(this)->get(key,false);
-		// (pat 8-2013) Lets use common code.
-		//ScopedLock lock(mLock);
-		//typename Map::const_iterator iter = mMap.find(key);
-		//while (iter==mMap.end()) {
-		//	mWriteSignal.wait(mLock);
-		//	iter = mMap.find(key);
-		//}
-		//D* retVal = iter->second;
-		//return retVal;
+		D result;
+		Unconst(this)->get(key,result,false);
+		return result;
 	}
 
 	// pat added.
-	unsigned size() const { return mMap.size(); }
+	unsigned size() const { ScopedLock(mLock); return mMap.size(); }
 
-	//Mutex &getModificationLock() { return mModificationLock; }
-	//void iterLock() { mModificationLock.lock(); }
-	//void iterUnlock() { mModificationLock.unlock(); }
-
-#if USE_SCOPED_ITERATORS
-	typedef ScopedIteratorTemplate<Map,InterthreadMap<K,D>,std::pair<const K,D*> > ScopedIterator;
-#endif
 	// WARNING: These iterators are not intrinsically thread safe.
-	// Caller must use ScopiedIterator or the modification lock or enclose the entire iteration in some higher level lock.
+	// Caller must use ScopedIterator or the modification lock or enclose the entire iteration in some higher level lock.
 	Mutex &qGetLock() { return mLock; }
 	typedef typename Map::iterator iterator;
 	typename Map::iterator begin() { return mMap.begin(); }
@@ -755,11 +599,22 @@ public:
 
 
 
+// (pat) The original InterthreadMap works only for pointers; now it is derived from the more general version above.
+/** Thread-safe map of pointers to class D, keyed by class K. */
+template <class K, class D > class InterthreadMap : public InterthreadMap1<K,D*>
+{
+	void vdelete(D* foo) { delete foo; }
+};
+
+
+
+
 
 
 
 
 /** This class is used to provide pointer-based comparison in priority_queues. */
+// The priority_queue sorts the largest element to the 'top' of the priority_queue, which is the back of the underlying vector.
 template <class T> class PointerCompare {
 
 	public:
@@ -776,13 +631,22 @@ template <class T> class PointerCompare {
 	Priority queue for interthread operations.
 	Passes pointers to objects.
 */
-template <class T, class C = std::vector<T*>, class Cmp = PointerCompare<T> > class InterthreadPriorityQueue {
+template <class T, class C = std::vector<T*>, class Cmp = PointerCompare<T> > class InterthreadPriorityQueue
+{
 
 	protected:
 
 	std::priority_queue<T*,C,Cmp> mQ;
 	mutable Mutex mLock;
 	mutable Signal mWriteSignal;
+
+	// Assumes caller holds the lock.
+	T*ipqGet() {
+		if (!mQ.size()) { return NULL; }
+		T*result = mQ.top();
+		mQ.pop();
+		return result;
+	}
 
 	public:
 
@@ -815,31 +679,45 @@ template <class T, class C = std::vector<T*>, class Cmp = PointerCompare<T> > cl
 	T* readNoBlock()
 	{
 		ScopedLock lock(mLock);
-		T* retVal = NULL;
-		if (mQ.size()!=0) {
-			retVal = mQ.top();
-			mQ.pop();
-		}
-		return retVal;
+		return ipqGet();
 	}
 
 	/** Blocking read. */
 	T* read()
 	{
 		ScopedLock lock(mLock);
-		T* retVal;
 		while (mQ.size()==0) mWriteSignal.wait(mLock);
-		retVal = mQ.top();
-		mQ.pop();
-		return retVal;
+		return ipqGet();
+	}
+
+	T* read(unsigned timeout)
+	{
+		if (timeout==0) return readNoBlock();
+		Timeval waitTime(timeout);
+		ScopedLock lock(mLock);
+		while (mQ.size()==0) {
+			long remaining = waitTime.remaining();
+			// (pat) How high do we expect the precision here to be?  I dont think they used precision timers,
+			// so dont try to wait if the remainder is just a few msecs.
+			if (remaining < 2) { return NULL;	}
+			mWriteSignal.wait(mLock,remaining);
+		}
+		return ipqGet();
+	}
+
+	// pat added 4-2014.  Return but do not pop the top element, if any, or NULL.
+	T* peek()
+	{
+		ScopedLock lock(mLock);
+		return mQ.size() ? mQ.top() : NULL;
 	}
 
 	/** Non-blocking write. */
 	void write(T* val)
 	{
-		// (pat) 8-14: Taking out the threading problem fix temporarily for David to use in the field.
-		ScopedLock lock(mLock);
-		mQ.push(val);
+		{	ScopedLock lock(mLock);
+			mQ.push(val);
+		}
 		mWriteSignal.signal();
 	}
 

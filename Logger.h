@@ -62,7 +62,9 @@ extern pid_t gPid;
 //#define CHECK_GROUP_LOG_LEVEL(groupname,loglevel) gCheckGroupLogLevel(#groupname,loglevel)
 //#define IS_LOG_LEVEL(wLevel) (CHECK_GROUP_LOG_LEVEL(LOG_GROUP,LOG_##wLevel) || gGetLoggingLevel(__FILE__)>=LOG_##wLevel)
 #define IS_LOG_LEVEL(wLevel) (gCheckGroupLogLevel(LOG_GROUP,LOG_##wLevel) || gGetLoggingLevel(__FILE__)>=LOG_##wLevel)
+#define IS_WATCH_LEVEL(wLevel) gCheckGroupWatchLevel(LOG_GROUP,LOG_##wLevel)
 #else
+#define IS_WATCH_LEVEL(wLevel) (gGetLoggingLevel(__FILE__)>=LOG_##wLevel)
 #define IS_LOG_LEVEL(wLevel) (gGetLoggingLevel(__FILE__)>=LOG_##wLevel)
 #endif
 
@@ -89,10 +91,11 @@ extern pid_t gPid;
 #define LOGVAR2(name,val) " " << name << "=" << (val)
 #define LOGVAR(var) (" " #var "=") << var
 #define LOGVARM(var) " " << &#var[1] << "=" << var      // Strip the first char ("m") off the var name when printing.
-#define LOGVARP(var) (" " #var "=(") << var <<")"   // Put value in parens; used for classes.
+#define LOGVARP2(name,val) (" " name "=(") << val <<")"		// Put value in parens; used for classes.
+#define LOGVARP(var) LOGVARP2(#var,var)						// Put value in parens; used for classes.
 // (pat) 3-2014: Use (unsigned long) for LOGHEX so it can be used for pointers with 64-bit compiler.  What a choke.
-#define LOGHEX(var) (" " #var "=0x") << hex << ((unsigned long)var) << dec
-#define LOGHEX2(name,val) " " << name << "=0x" << hex << ((unsigned long)(val)) << dec
+#define LOGHEX(var) (" " #var "=0x") << std::hex << ((unsigned long long)var) << std::dec
+#define LOGHEX2(name,val) " " << name << "=0x" << std::hex << ((unsigned long)(val)) << std::dec
 // These are kind of cheesy, but you can use for bitvector
 #define LOGBV2(name,val) " " << name << "=(" << val<<" size:"<<val.size()<<")"
 #define LOGBV(bv) LOGBV2(#bv,bv)
@@ -107,9 +110,9 @@ extern pid_t gPid;
 // (pat) The WATCH and WATCHF macros print only to the console.  Pat uses them for debugging.
 // The WATCHINFO macro prints an INFO level message that is also printed to the console if the log level is DEBUG.
 // Beware that the arguments are evaluated multiple times.
-#define WATCHF(...) if (IS_LOG_LEVEL(DEBUG)) { printf("%s ",timestr(7).c_str()); printf(__VA_ARGS__); LOG(DEBUG)<<format(__VA_ARGS__); }
-#define WATCH(...) if (IS_LOG_LEVEL(DEBUG)) { std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl; LOG(DEBUG)<<__VA_ARGS__; }
-#define WATCHINFO(...) { if (IS_LOG_LEVEL(DEBUG)) { std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl; } LOG(INFO)<<__VA_ARGS__; }
+#define WATCHF(...)  { LOG(DEBUG)<<format(__VA_ARGS__); if (IS_WATCH_LEVEL(DEBUG)) {printf("%s ",timestr(7).c_str()); printf(__VA_ARGS__);} }
+#define WATCH(...) { LOG(DEBUG)<<__VA_ARGS__; if (IS_WATCH_LEVEL(DEBUG)) {std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl;} }
+#define WATCHINFO(...) { LOG(INFO)<<__VA_ARGS__; if (IS_WATCH_LEVEL(INFO)) {std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl;} }
 
 
 //#include "Threads.h"		// must be after defines above, if these files are to be allowed to use LOG()
@@ -168,6 +171,7 @@ class LogGroup {
 	void setAll();	// Update mDebugLevel from the Log.Group.... config database options.
 
 	int8_t mDebugLevel[_NumberOfLogGroups];	// use int in case a -1 value gets in here.
+	int8_t mWatchLevel[_NumberOfLogGroups];	// use int in case a -1 value gets in here.
 	LogGroup();
 	void LogGroupInit();
 	private:
@@ -181,6 +185,11 @@ static __inline__ bool gCheckGroupLogLevel(LogGroup::Group group, unsigned level
 	assert(group < LogGroup::_NumberOfLogGroups);
 	//_LOG(DEBUG) << LOGVAR(group)<<LOGVAR(level)<<LOGVAR2("stashed",(unsigned) gLogGroup.mDebugLevel[group]);
 	return gLogGroup.mDebugLevel[group] >= (int) level;
+}
+static __inline__ bool gCheckGroupWatchLevel(LogGroup::Group group, unsigned level) {
+	assert(group < LogGroup::_NumberOfLogGroups);
+	//_LOG(DEBUG) << LOGVAR(group)<<LOGVAR(level)<<LOGVAR2("stashed",(unsigned) gLogGroup.mDebugLevel[group]);
+	return gLogGroup.mWatchLevel[group] >= (int) level;
 }
 
 

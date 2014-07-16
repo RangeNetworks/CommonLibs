@@ -1,6 +1,6 @@
 /**@file Module for performance-reporting mechanisms. */
 /*
-* Copyright 2012, 2013 Range Networks, Inc.
+* Copyright 2012, 2013, 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -98,6 +98,7 @@ class ReportingTable {
 
 /** Periodically triggers ReportingTable::commit(). */
 void* reportingBatchCommitter(void*);
+extern ReportingTable gReports;
 
 #endif
 

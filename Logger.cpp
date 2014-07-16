@@ -262,7 +262,6 @@ ostringstream& Log::get()
 }
 
 
-
 // Allow applications to also pass in a filename.  Filename should come from the database
 void gLogInitWithFile(const char* name, const char* level, int facility, char * LogFilePath)
 {
@@ -301,9 +300,9 @@ void gLogInit(const char* name, const char* level, int facility)
 	gPid = getpid();
 
 	// Pat added, tired of the syslog facility.
-	// Both the transceiver and OpenBTS use this same facility, but only OpenBTS/OpenNodeB may use this log file:
+	// Both the transceiver and OpenBTS use this same Logger class, but only RMSC/OpenBTS/OpenNodeB may use this log file:
 	string str = gConfig.getStr("Log.File");
-	if (gLogToFile==0 && str.length() && 0==strncmp(gCmdName,"Open",4)) {
+	if (gLogToFile==0 && str.length() && (0==strncmp(gCmdName,"Open",4) || 0==strncmp(gCmdName,"RMSC",4))) {
 		const char *fn = str.c_str();
 		if (fn && *fn && strlen(fn)>3) {	// strlen because a garbage char is getting in sometimes.
 			gLogToFile = fopen(fn,"w"); // New log file each time we start.
@@ -365,6 +364,7 @@ void LogGroup::LogGroupInit()
 
 	for (unsigned g = 0; g < _NumberOfLogGroups; g++) {
 		mDebugLevel[g] = 0;
+		mWatchLevel[g] = 0;
 	}
 
 #if 0
@@ -377,26 +377,39 @@ void LogGroup::LogGroupInit()
 #endif
 }
 
-static const char *LogGroupPrefix = "Log.Group.";
 
+static const char*getNonEmptyStrIfDefined(string param)
+{
+	if (! gConfig.defines(param)) { return NULL; }
+	string result = gConfig.getStr(param);
+	// (pat) The "unconfig" command does not remove the value, it just gives it an empty value, so check for that.
+	return result.size() ? result.c_str() : NULL;
+}
 
 // Set all the Log.Group debug levels based on database settings
 void LogGroup::setAll()
 {
 	LOG(DEBUG);
-	string prefix = string(LogGroupPrefix);
+	string groupprefix = string("Log.Group.");
+	string watchprefix = string("Log.Watch.");
 	for (unsigned g = 0; g < _NumberOfLogGroups; g++) {
+		{
+		string param = groupprefix + mGroupNames[g];
 		int level = 0;
-		string param = prefix + mGroupNames[g];
-		if (gConfig.defines(param)) {
-			string levelName = gConfig.getStr(param);
-			// (pat) The "unconfig" command does not remove the value, it just gives it an empty value, so check for that.
-			if (levelName.size()) {
-				//LOG(DEBUG) << "Setting "<<LOGVAR(param)<<LOGVAR(levelName);
-				level = lookupLevel2(param,levelName);
-			}
+		if (const char*levelName = getNonEmptyStrIfDefined(param)) {
+			level = lookupLevel2(param,levelName);
 		}
 		mDebugLevel[g] = level;
+		}
+
+		{
+		string watchparam = watchprefix + mGroupNames[g];
+		int watchlevel = 0;
+		if (const char*levelName = getNonEmptyStrIfDefined(watchparam)) {
+			watchlevel = lookupLevel2(watchparam,levelName);
+		}
+		mWatchLevel[g] = watchlevel;
+		}
 	}
 }
 

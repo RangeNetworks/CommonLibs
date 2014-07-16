@@ -371,33 +371,34 @@ class ConfigurationKey {
 		BOOLEAN,
 		CHOICE_OPT,
 		CHOICE,
-		CIDR_OPT,
+		CIDR_OPT,		// (pat) IP Route, eg: "xxx.xxx.xxx.xxx/yy"
 		CIDR,
 		FILEPATH_OPT,
 		FILEPATH,
 		HOSTANDPORT_OPT,
-		HOSTANDPORT,
+		HOSTANDPORT,	// (pat) hostname is allowed.
 		IPADDRESS_OPT,
-		IPADDRESS,
+		IPADDRESS,		// (pat) IP Address but hostnames not allowed.
 		IPANDPORT,
 		MIPADDRESS_OPT,
-		MIPADDRESS,
+		MIPADDRESS,		// (pat) List of IP addresses + optional ports, used only for the Neighbors config option.
 		PORT_OPT,
-		PORT,
+		PORT,			// (pat) An IP port.
 		REGEX_OPT,
 		REGEX,
 		STRING_OPT,
 		STRING,
 		VALRANGE 		// (pat) string format is: <min_value> ':' <max_value> [ '(' <step> ')' ]
 						// step is not currently enforced.
+						// To allow floating point add a decimal point to the range, eg: "0.0:10.0"
 	};
 
 	enum Scope
 	{
-		GLOBALLYUNIQUE = 1,
-		GLOBALLYSAME = 2,
-		NEIGHBORSUNIQUE = 4,
-		NEIGHBORSSAME = 8,
+		GLOBALLYUNIQUE = 1,		// (pat) value must be unique on all nodes.
+		GLOBALLYSAME = 2,		// (pat) value must be the same on all nodes.
+		NEIGHBORSUNIQUE = 4,	// (pat) value must be unique on all neighbors
+		NEIGHBORSSAME = 8,		// (pat) value must be the same on all neighbors
 		NODESPECIFIC = 16
 	};
 

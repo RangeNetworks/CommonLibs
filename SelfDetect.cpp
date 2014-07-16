@@ -1,6 +1,6 @@
 /**@file Module for preventing two instances of a program from running. */
 /*
-* Copyright 2013 Range Networks, Inc.
+* Copyright 2013, 2014 Range Networks, Inc.
 *
 * This software is distributed under the terms of the GNU Affero Public License.
 * See the COPYING file in the main directory for details.
@@ -96,6 +96,7 @@ void SelfDetect::RegisterProgram(const char *argv0)
 			//		openbts: NOTICE 3031243584 05:03:50.4 OpenBTS.cpp:165:startTransceiver: starting transceiver ./transceiver w/ 1 ARFCNs and Args:
 			//		openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:98:Exit: *** Terminating ./OpenBTS
 			//		openbts: NOTICE 3073816320 05:03:50.4 SelfDetect.cpp:105:Exit: *** Removing pid file /var/run/OpenBTS.pid
+			case SIGCONT:
 			case SIGCHLD:
 				break;
 			default:
