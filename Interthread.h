@@ -131,7 +131,15 @@ template <class T, class Fifo=PtrList<T> > class InterthreadQueue {
 		mWriteSignalPointer = other.mWriteSignalPointer;
 	}
 
-	Mutex &qGetLock() { return mLock; }
+	// (pat) This provides a client the ability to lock the InterthreadQueue and iterate it.
+	Mutex &qGetLock() const { return mLock; }
+	typedef typename Fifo::iterator iterator;
+	typedef typename Fifo::const_iterator const_iterator;
+	iterator begin() { assert(mLock.lockcnt()); return mQ.begin(); }
+	iterator end() { assert(mLock.lockcnt()); return mQ.end(); }
+	const_iterator begin() const { assert(mLock.lockcnt()); return mQ.begin(); }
+	const_iterator end() const { assert(mLock.lockcnt()); return mQ.end(); }
+
 #if USE_SCOPED_ITERATORS
 	// The Iterator locks the InterthreadQueue until the Iterator falls out of scope.
 	// Semantics are different from normal C++ iterators - the begin,end,erase methods are in
@@ -247,7 +255,7 @@ template <class T, class Fifo=PtrList<T> > class InterthreadQueue {
 	}
 
 	/** Non-blocking peek at the first element; returns NULL if empty. */
-	T* front()
+	T* front() const
 	{
 		ScopedLock lock(*mLockPointer);
 		return (T*) (mQ.size() ? mQ.front() : NULL);

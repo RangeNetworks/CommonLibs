@@ -195,11 +195,11 @@ extern string uintToString(uint64_t h, uint64_t l);
 extern string uintToString(uint32_t x);
 
 //template <class Type> class RefCntPointer;
-// The class is created with a RefCnt of 0.  The caller must assign the constructed result to a pointer
-// of type RefCntPointer.  When the last RefCntPointer is freed, this struct is too.
+// The class is created with a RefCnt of 0.  The caller may assign the constructed result to a pointer
+// of type RefCntPointer.  If so, then when the last RefCntPointer is freed, this struct is too.
 class RefCntBase {
 	template <class Type> friend class RefCntPointer;
-	Mutex mRefMutex;
+	mutable Mutex mRefMutex;
 	mutable short mRefCnt;		// signed, not unsigned!
 	int setRefCnt(int val) { return mRefCnt = val; }
 	// The semantics of reference counting mean you cannot copy an object that has reference counts;
@@ -208,8 +208,10 @@ class RefCntBase {
 	RefCntBase(RefCntBase &) { assert(0); }
 	RefCntBase(const RefCntBase &) { assert(0); }
 	RefCntBase operator=(RefCntBase &) {assert(0); mRefCnt = 0; return *this; }
-	int decRefCnt();	// Only RefCntPointer is permitted to use incRefCnt and decRefCnt.
-	void incRefCnt();
+	// These are not 'const' but wonderful C++ requires us to declare them const so we can use a const pointer as the RefCntPointer target,
+	// then add 'mutable' to everything.  What a botched up language.
+	int decRefCnt() const;	// Only RefCntPointer is permitted to use incRefCnt and decRefCnt.
+	void incRefCnt() const;
 	public:
 	virtual ~RefCntBase();
 	RefCntBase() : mRefCnt(0) {}
@@ -275,6 +277,10 @@ class RefCntPointer {
 };
 
 extern string firstlines(string msgstr, int n=2);
+
+extern std::string rn_backtrace();
+extern string decodeToString(const char *buf, unsigned buflen, string encodingArg, string &errorMessage);
+extern string encodeToString(const char *data, unsigned datalen, string encodingArg, string &errorMessage);
 
 };	// namespace
 

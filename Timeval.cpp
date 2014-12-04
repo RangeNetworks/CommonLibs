@@ -95,21 +95,25 @@ ostream& operator<<(ostream& os, const struct timespec& ts)
 	return os;
 }
 
-void Timeval::isoTime(time_t t, std::string &result, bool isLocal)
+string Timeval::isoTime(time_t t, bool isLocal)
 {
-        char buf[BUFSIZ];
-        struct tm tBuf;
-        if (isLocal)
-            localtime_r(&t, &tBuf);
-        else
-            gmtime_r(&t, &tBuf);
-        snprintf(buf, sizeof(buf)-1, "%04d-%02d-%02dT%02d:%02d:%02d%s",
-            tBuf.tm_year + 1900, tBuf.tm_mon + 1, tBuf.tm_mday,
-            tBuf.tm_hour, tBuf.tm_min, tBuf.tm_sec,
-            isLocal == false ? "Z" : "");
-        result = buf;
+	char buf[100];
+	struct tm tBuf;
+	if (isLocal)
+		localtime_r(&t, &tBuf);
+	else
+		gmtime_r(&t, &tBuf);
+	snprintf(buf, sizeof(buf)-1, "%04d-%02d-%02dT%02d:%02d:%02d%s",
+		tBuf.tm_year + 1900, tBuf.tm_mon + 1, tBuf.tm_mday,
+		tBuf.tm_hour, tBuf.tm_min, tBuf.tm_sec,
+		isLocal == false ? "Z" : "");
+	return string(buf);
 }
 
+void Timeval::isoTime(time_t t, std::string &result, bool isLocal)
+{
+	result = isoTime(t,isLocal);
+}
 
 
 // vim: ts=4 sw=4

@@ -60,6 +60,8 @@ int sqlite3_prepare_statement(sqlite3* DB, sqlite3_stmt **stmt, const char* quer
         if (src) {
 				// (pat) You must not call LOG() from this file because it causes infinite recursion through gGetLoggingLevel and ConfigurationTable::lookup
                 _LOG(ERR)<< format("sqlite3_prepare_v2 failed code=%u for \"%s\": %s\n",src,query,sqlite3_errmsg(DB));
+
+				// (pat) And I quote from sql documentation: "Invoking sqlite3_finalize() on a NULL pointer is a harmless no-op."
                 sqlite3_finalize(*stmt);
         }
         return src;

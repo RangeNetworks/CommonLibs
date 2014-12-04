@@ -125,6 +125,7 @@ class SingleLinkList
 
 	public:
 	typedef void iterator;	// Does not exist for this class, but needs to be defined.
+	typedef void const_iterator;	// Does not exist for this class, but needs to be defined.
 	SingleLinkList() : mHead(0), mTail(0), mSize(0), mTotalSize(0) {}
 	unsigned size() const { return mSize; }
 	unsigned totalSize() const { return mTotalSize; }
@@ -161,8 +162,8 @@ class SingleLinkList
 		mSize++;
 		mTotalSize += item->size();
 	}
-	Node *front() { return mHead; }
-	Node *back() { return mTail; }
+	Node *front() const { return mHead; }
+	Node *back() const { return mTail; }
 
 	// Interface to InterthreadQueue so it can used SingleLinkList as the Fifo.
 	void put(void *val) { push_back((Node*)val); }

@@ -38,9 +38,13 @@ using namespace std;
 
 int gMutexLogLevel = LOG_INFO;	// The mutexes cannot call gConfig or gGetLoggingLevel so we have to get the log level indirectly.
 
+#if !defined(gettid)
+# define gettid() syscall(SYS_gettid)
+#endif // !defined(gettid)
 
 #define LOCKLOG(level,fmt,...) \
-	if (gMutexLogLevel >= LOG_##level) syslog(LOG_##level,"%lu %s %s:%u:%s:lockid=%p " fmt,(unsigned long)pthread_self(),Utils::timestr().c_str(),__FILE__,__LINE__,__FUNCTION__,this,##__VA_ARGS__);
+	if (gMutexLogLevel >= LOG_##level) syslog(LOG_##level,"%lu %s %s:%u:%s:lockid=%p " fmt,gettid(),Utils::timestr().c_str(),__FILE__,__LINE__,__FUNCTION__,this,##__VA_ARGS__);
+	//if (gMutexLogLevel >= LOG_##level) syslog(LOG_##level,"%lu %s %s:%u:%s:lockid=%p " fmt,(unsigned long)pthread_self(),Utils::timestr().c_str(),__FILE__,__LINE__,__FUNCTION__,this,##__VA_ARGS__);
 	//printf("%u %s %s:%u:%s:lockid=%u " fmt "\n",(unsigned)pthread_self(),Utils::timestr().c_str(),__FILE__,__LINE__,__FUNCTION__,(unsigned)this,##__VA_ARGS__);
 
 
@@ -103,10 +107,12 @@ Mutex::~Mutex()
 	assert(!res);
 }
 
-bool Mutex::trylock()
+bool Mutex::trylock(const char *file, unsigned line)
 {
 	if (pthread_mutex_trylock(&mMutex)==0) {
-		if (mLockCnt < maxLocks) { mLockerFile[mLockCnt] = NULL; }
+		if (mLockCnt >= 0 && mLockCnt < maxLocks) {
+			mLockerFile[mLockCnt] = file; mLockerLine[mLockCnt] = line;		// Now our thread has it locked from here.
+		}
 		mLockCnt++;
 		return true;
 	} else {
@@ -122,6 +128,9 @@ bool Mutex::timedlock(int msecs) // Wait this long in milli-seconds.
 	return ETIMEDOUT != pthread_mutex_timedlock(&mMutex, &timeout);
 }
 
+// There is a chance here that the mLockerFile&mLockerLine
+// could change while we are printing it if multiple other threads are contending for the lock
+// and swapping the lock around while we are in here.
 string Mutex::mutext() const
 {
 	string result;
@@ -138,46 +147,27 @@ string Mutex::mutext() const
 	return result;
 }
 
-void Mutex::lock() {
-	if (lockerFile()) LOCKLOG(DEBUG,"lock unchecked");
-	_lock();
-	mLockCnt++;
-}
+// Pat removed 10-1-2014.
+//void Mutex::lock() {
+//	if (lockerFile()) LOCKLOG(DEBUG,"lock unchecked");
+//	_lock();
+//	mLockCnt++;
+//}
 
 // WARNING:  The LOG facility calls lock, so to avoid infinite recursion do not call LOG if file == NULL,
 // and the file argument should never be used from the Logger facility.
 void Mutex::lock(const char *file, unsigned line)
 {
-	// (pat 10-25-13) This is now going to be the default behavior so we can detect and report deadlocks at customer sites.
-	//if (file && gGetLoggingLevel(file)>=LOG_DEBUG)
-	//if (file) OBJLOG(DEBUG) <<"start at "<<file<<" "<<line;
+	// (pat 10-25-13) Deadlock reporting is now the default behavior so we can detect and report deadlocks at customer sites.
 	if (file) {
 		LOCKLOG(DEBUG,"start at %s %u",file,line);
 		// If we wait more than a second, print an error message.
 		if (!timedlock(1000)) {
-			// We have to use a temporary variable here because there is a chance here that the mLockerFile&mLockerLine
-			// could change while we are printing it if multiple other threads are contending for the lock
-			// and swapping the lock around while we are in here.
-			// There is still some chance that mLockerFile&mLockerLine will be out of phase with each other, but at least it wont crash.
-			// Granted, if we have already been stalled for a second, this is all unlikely.
-			//const char *oldFile = NULL; unsigned oldLine = 0;
-			//if (mLockCnt < maxLocks) { oldFile = mLockerFile[mLockCnt]; oldLine = mLockerLine[mLockCnt]; }
-			//OBJLOG(ERR) << "Blocked more than one second at "<<file<<" "<<line<<" by "<<(oldFile?oldFile:"?")<<" "<<oldLine;
-			LOCKLOG(ERR, "Blocked more than one second at %s %u by %s",file,line,mutext().c_str());
-			printf("WARNING: %s Blocked more than one second at %s %u by %s\n",timestr(4).c_str(),file,line,mutext().c_str());
+			string backtrace = rn_backtrace();
+			LOCKLOG(ERR, "Blocked more than one second at %s %u by %s %s",file,line,mutext().c_str(),backtrace.c_str());
+			printf("WARNING: %s Blocked more than one second at %s %u by %s %s\n",timestr(4).c_str(),file,line,mutext().c_str(),backtrace.c_str());
 			_lock();					// If timedlock failed we are probably now entering deadlock.
 		}
-#if older_version
-		mLockerFile = file; mLockerLine = line;
-		if (!trylock()) {
-			// This is not 100% for sure, because lock might be released in this little interval,
-			// or there could be multiple callers waiting on the lock overwriting mLockerFile, mLockerLine,
-			// but it is not worth adding yet another mutex just to perfect this debug message.
-			OBJLOG(DEBUG) << "Blocking at "<<file<<" "<<line<<" by "<<oldFile<<" "<<oldLine;
-			lock();
-			OBJLOG(DEBUG) << "Unblocking at "<<file<<" "<<line;
-		}
-#endif
 	} else {
 		//LOCKLOG(DEBUG,"unchecked lock");
 		_lock();
@@ -215,6 +205,64 @@ RWLock::~RWLock()
 	assert(!res);
 }
 
+void ScopedLockMultiple::_init(int wOwner, Mutex& wA, Mutex&wB, Mutex&wC) {
+	ownA[0] = wOwner & 1; ownA[1] = wOwner & 2; ownA[2] = wOwner & 4;
+	mA[0] = &wA; mA[1] = &wB; mA[2] = &wC;
+	_saveState();
+}
+void ScopedLockMultiple::_lock(int which) {
+	if (state[which]) return;
+	mA[which]->lock(_file,_line);
+	state[which] = true;
+}
+bool ScopedLockMultiple::_trylock(int which) {
+	if (state[which]) return true;
+	state[which] = mA[which]->trylock(_file,_line);
+	return state[which];
+}
+void ScopedLockMultiple::_unlock(int which) {
+	if (state[which]) mA[which]->unlock();
+	state[which] = false;
+}
+void ScopedLockMultiple::_saveState() {
+	// The caller may enter with mutex locked by the calling thread if the owner bit is set.
+	for (int i = 0; i <= 2; i++) {
+		// Test is deceptive because currently the owner bit is an assertion that owner has the bit locked.
+		// If we dont require that, then how would we know whether the lock was held by the current thread, or by some other thread?
+		// We would need to add some per-thread storage, and store it in the Mutex during Mutex::lock() or Mutex::trylock().
+		state[i] = ownA[i];	// (ownA[i] && mA[i]->lockcnt());
+		if (ownA[i]) { if (mA[i]->lockcnt() != 1) printf("mA[%d].lockcnt=%d\n",i,mA[i]->lockcnt()); assert(mA[i]->lockcnt() == 1); }
+	}
+}
+void ScopedLockMultiple::_restoreState() {
+	// Leave state of each lock the way we found it.
+	for (int i = 0; i <= 2; i++) {
+		// This is a little redundant because the _lock and _unlock now test state.
+		if (!ownA[i] && state[i]) _unlock(i);
+		else if (ownA[i] && ! state[i]) _lock(i);
+	}
+}
+void ScopedLockMultiple::_lockAll() {
+	// Do not return until we have locked all three mutexes.
+	for (int n=0; true; n++) {
+		// Attempt to lock in order 0,1,2.
+		_lock(0); 						// Wait on 0, unless it was locked by us on entry.
+		if (_trylock(1) && _trylock(2)) return;			// Then try to acquire 1 and 2
+		_unlock(1);										// If failure, release all.
+		_unlock(0);
+		// Attempt to lock in order 1,0,2.
+		_lock(1);
+		if (_trylock(0) && _trylock(2)) return;
+		_unlock(0);
+		_unlock(1);
+		// Attempt to lock in order 2,1,0.
+		_lock(2);
+		if (_trylock(0) && _trylock(1)) return;
+		_unlock(0);
+		_unlock(2);	
+		LOCKLOG(DEBUG,"Multiple lock attempt %d",n);	// Seeing this message is a hint we are having contention issues.
+	}
+}
 
 
 /** Block for the signal up to the cancellation timeout in msecs. */

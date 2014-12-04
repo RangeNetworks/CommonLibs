@@ -243,6 +243,8 @@ class BitVector : public VectorBase<char>
 
 	/** Pack into a char array. */
 	void pack(unsigned char*) const;
+	// Same as pack but return a string.
+	std::string packToString() const;
 
 	/** Unpack from a char array. */
 	void unpack(const unsigned char*);

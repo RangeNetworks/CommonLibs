@@ -91,13 +91,109 @@ void* mapReader(void*)
 	return NULL;
 }
 
+static const uint32_t Hyperframe = 1024;
+
+static int32_t FNDelta(int32_t v1, int32_t v2)
+{
+	static const int32_t halfModulus = Hyperframe/2;
+	int32_t delta = v1-v2;
+	if (delta>=halfModulus) delta -= Hyperframe;
+	else if (delta<-halfModulus) delta += Hyperframe;
+	return (int32_t) delta;
+}
+
+static int FNCompare(int32_t v1, int32_t v2)
+{
+	int32_t delta = FNDelta(v1,v2);
+	if (delta>0) return 1;
+	if (delta<0) return -1;
+	return 0;
+}
+
+struct TestTime {
 
 
+	int mFN;				///< frame number in the hyperframe
+	int mTN;			///< timeslot number
+
+	public:
+
+	TestTime(int wFN=0, int wTN=0)
+		:mFN(wFN),mTN(wTN)
+	{ }
+
+	bool operator<(const TestTime& other) const
+	{
+		if (mFN==other.mFN) return (mTN<other.mTN);
+		return FNCompare(mFN,other.mFN)<0;
+	}
+
+	bool operator>(const TestTime& other) const
+	{
+		if (mFN==other.mFN) return (mTN>other.mTN);
+		return FNCompare(mFN,other.mFN)>0;
+	}
+
+	bool operator<=(const TestTime& other) const
+	{
+		if (mFN==other.mFN) return (mTN<=other.mTN);
+		return FNCompare(mFN,other.mFN)<=0;
+	}
+
+	bool operator>=(const TestTime& other) const
+	{
+		if (mFN==other.mFN) return (mTN>=other.mTN);
+		return FNCompare(mFN,other.mFN)>=0;
+	}
+
+	bool operator==(const TestTime& other) const
+	{
+		return (mFN == other.mFN) && (mTN==other.mTN);
+	}
+
+};
 
 
+// Welcome to wonderful C++.
+struct CompareAdapter {
+	/** Compare the objects pointed to, not the pointers themselves. */
+	// (pat) This is used when a RachInfo is placed in a priority_queue.
+	// Return true if rach1 should appear before rach2 in the priority_queue,
+	// meaning that rach1 will be serviced before rach2.
+	bool operator()(const TestTime *rach1, const TestTime *rach2) {
+		return *rach1 > *rach2;
+	}
+};
+
+void priority_queue_test()
+{
+	typedef InterthreadPriorityQueue<TestTime,std::vector<TestTime*>,CompareAdapter> PQ_t;
+	PQ_t pq;
+
+	pq.write(new TestTime(2,0));
+	pq.write(new TestTime(1,0));
+	pq.write(new TestTime(3,0));
+	pq.write(new TestTime(2,3));
+	pq.write(new TestTime(2,2));
+	pq.write(new TestTime(2,1));
+	pq.write(new TestTime(0,0));
+	pq.write(new TestTime(1021,1));
+	pq.write(new TestTime(1023,1));
+	pq.write(new TestTime(1022,1));
+	pq.write(new TestTime(1024,1));
+	while (1) {
+		TestTime *peek = pq.peek();
+		TestTime *ptime = pq.readNoBlock();
+		if (!ptime) { break; }	// Done.
+		assert(*peek == *ptime);
+		printf("TestTime(%d,%d)\n",ptime->mFN,ptime->mTN);
+	}
+}
 
 int main(int argc, char *argv[])
 {
+	priority_queue_test();
+
 	Thread qReaderThread;
 	qReaderThread.start(qReader,NULL);
 	Thread mapReaderThread;

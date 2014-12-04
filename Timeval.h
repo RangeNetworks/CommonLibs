@@ -99,7 +99,8 @@ class Timeval {
          *  YYYY-MM-DDTHH:MM:SS[Z] format.  If isLocal is true, use localtime,
          *  otherwise, use gmtime.
          */
-        static void isoTime(time_t t, std::string &result, bool isLocal = false);
+        static std::string isoTime(time_t t, bool isLocal);
+        static void isoTime(time_t t, std::string &result, bool isLocal);
 
 };
 

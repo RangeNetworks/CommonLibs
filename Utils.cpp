@@ -21,17 +21,24 @@
 #include <sstream>		// For ostringstream
 #include <string.h>		// For strcpy
 #include <stdlib.h>		// For malloc
-//#include "GSMCommon.h"
+#include <execinfo.h>	// For backtrace
 #include "Utils.h"
 #include "MemoryLeak.h"
 
 namespace Utils {
 using namespace std;
 
+struct stringCaseInsensitive : public string {
+	bool operator==(string &other) { return 0==strcasecmp(this->c_str(),other.c_str()); }
+	bool operator!=(string &other) { return 0!=strcasecmp(this->c_str(),other.c_str()); }
+	stringCaseInsensitive(string &other) : string(other) {}
+	stringCaseInsensitive(const char* &other) : string(other) {}
+};
+
 // (pat) This definition must be in the .cpp file to anchor the class vtable.
 RefCntBase::~RefCntBase() { LOG(DEBUG) << typeid(this).name(); }
 
-int RefCntBase::decRefCnt()
+int RefCntBase::decRefCnt() const
 {
 	int saveRefCnt;		// Passes the refcnt out of the locked block.
 	{	ScopedLock lock(mRefMutex);
@@ -50,7 +57,7 @@ int RefCntBase::decRefCnt()
 	}
 	return saveRefCnt;
 }
-void RefCntBase::incRefCnt()
+void RefCntBase::incRefCnt() const
 {
 	ScopedLock lock(mRefMutex);
 	//printf("incRefCnt %p before=%d\n",this,mRefCnt);
@@ -93,10 +100,12 @@ void MemStats::memChkDel(MemoryNames memIndex, const char *id)
 	ScopedLock lock(memChkLock);
 	/*cout << "del " #type "\n";*/
 	mMemNow[memIndex]--;
-	if (mMemNow[memIndex] < 0) {
-		LOG(ERR) << "Memory reference count underflow on type "<<id;
+	if (gMemLeakDebug && mMemNow[memIndex] < 0) {
+		// (pat) This message can happen for some classes because the decrement above is not mutex protected;
+		// it is only for debugging purposes, not to cause alarm, so take it out.
+		LOG(DEBUG) << "Memory reference count underflow on type "<<id;
 		if (gMemLeakDebug) assert(0);
-		mMemNow[memIndex] += 100;	// Prevent another message for a while.
+		//mMemNow[memIndex] += 100;	// Prevent another message for a while.
 	}
 }
 
@@ -573,4 +582,187 @@ string firstlines(string msgstr, int n) {	// n must be >=1
 	//printf("firstlines return n=%d pos=%d\n",n,(int)pos);
 	return msgstr.substr(0,pos);
 }
-};
+
+static string backtrace_failed = "backtrace failed";
+
+string rn_backtrace()
+{
+	void *buffer[30];
+	int nptrs = backtrace(buffer,30);
+	if (nptrs <= 0) { return backtrace_failed; }
+	char **strings = backtrace_symbols(buffer,nptrs);
+	if (strings == NULL) { return backtrace_failed; }
+	string result;
+	try {
+		result = "backtrace:";
+		for (int j = 0; j < nptrs; j++) {
+			result = result + " " + strings[j];
+		}
+	} catch(...) {
+		return backtrace_failed;
+	}
+	free(strings);
+	return result;
+}
+
+
+// Size is 65 instead of 64 so we can easily init from a char string, which is nul-terminated.
+static unsigned char sMapBase64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static unsigned char sMapBase64Reverse[256];
+static unsigned char sMapHexReverse[256];
+
+// (pat) This class exists only to init the decoder maps above.
+static struct BaseNDecoder {
+	BaseNDecoder() { 
+		// Init the base64 decoder:
+		memset(sMapBase64Reverse,0xff,sizeof(sMapBase64Reverse)); // Set all illegal characters to 0xff.
+		for (unsigned i = 0; i < 64; i++) { sMapBase64Reverse[sMapBase64[i]] = i; }
+		sMapBase64Reverse['='] = 0;	// The '=' char is used as the premature-end-of-string marker.
+
+		// Init the hex decoder:
+		memset(sMapHexReverse,0xff,sizeof(sMapHexReverse)); // Set all illegal characters to 0xff.
+		for (unsigned ch = '0'; ch <= '9'; ch++) sMapHexReverse[ch] = ch - '0';
+		for (unsigned ch = 'A'; ch <= 'Z'; ch++) sMapHexReverse[ch] = ch - 'A' + 10;
+		for (unsigned ch = 'a'; ch <= 'z'; ch++) sMapHexReverse[ch] = ch - 'a' + 10;
+	}
+} sBaseNDecoderInit;
+
+
+// (pat) Encode buffer of binary data to base64 encoded string.
+static string base64EncodeToString(const unsigned char *ubuf, unsigned buflen)
+{
+	string result;
+	result.reserve((buflen*4+2)/3);
+	for (unsigned i = 0; i < buflen; i += 3) {
+		// Suck in 3 chars.
+		uint32_t accum = ubuf[i];
+		accum <<= 8; if (i+1<buflen) { accum |= ubuf[i+1]; }
+		accum <<= 8; if (i+2<buflen) { accum |= ubuf[i+2]; }
+
+		// Spit out 4 chars.
+		result.push_back((char)sMapBase64[0x3f&(accum>>18)]);
+		result.push_back((char)sMapBase64[0x3f&(accum>>12)]);
+		result.push_back(i+1 < buflen ? (char)sMapBase64[0x3f&(accum>>6)] : '=');
+		result.push_back(i+2 < buflen ? (char)sMapBase64[0x3f&accum] : '=');
+	}
+	return result;
+}
+
+
+// (pat) Decode base64 encoded buffer of characters to a string of binary data.  Ignore interspersed spaces and newlines.
+static string base64DecodeToString(const unsigned char *ubuf, unsigned buflen, string &errorMessage)
+{
+	string result;
+	result.reserve((buflen * 3 + 2) / 4);
+	for (unsigned i = 0; i < buflen;) {
+		uint32_t accum = 0;	// Accumulator of up to 24 bits from 4 base64 chars.
+		unsigned j = 0;		// Number of characters accumulated, 0-4.
+		// Suck in 4 chars.
+		while (j < 4 && i < buflen) {
+			unsigned ch = ubuf[i++];
+			if (isspace(ch)) { continue; }	// Ignore spaces and newlines.
+			if (ch == '=') {
+				// The '=' at the end of a base64 encoded string indicates size was not evenly divisible by 3 and pre-terminates.
+				// We will scan the rest of the string to detect errors.
+				for ( ; i < buflen; i++) {
+					if (! (isspace(ubuf[i]) || ubuf[i] == '=')) { errorMessage = "found data after '=' terminator in base64 data"; }
+				}
+				break;
+			}
+			unsigned decoded = sMapBase64Reverse[ch];
+			if (decoded >= 64) {
+				errorMessage = "invalid characters in base64 data";
+				continue;	// But we'll keep going and hope for the best.
+			}
+			accum |= decoded << ((3-j)*6);
+			j++;
+		}
+		// Spit out 3 chars.
+		if (j >= 1) result.push_back(0xff&(accum >>16));
+		if (j >= 3) result.push_back(0xff&(accum >>8));
+		if (j == 4) result.push_back(0xff&accum);
+	}
+	return result;
+}
+
+
+// (pat) Decode hex encoded buffer of characters to a string of binary data.  Ignore interspersed spaces and newlines.
+// Undefined what happens if the number of input hex chars is odd.
+static string hexDecodeToString(const unsigned char *ubuf, unsigned buflen, string &errorMessage)
+{
+	string result;
+	result.reserve((buflen + 1) / 2);
+	for (unsigned i = 0; i < buflen; ) {
+		unsigned j = 0;
+		unsigned char accum = 0;
+		// Suck in 2 chars.
+		while (j < 2 && i < buflen) {
+			unsigned ch = ubuf[i++];
+			if (isspace(ch)) continue;
+			unsigned decoded = sMapHexReverse[ch];
+			if (decoded >= 16) {
+				errorMessage = "unexpected character in hex data";
+			} else {
+				accum = (accum << 4) | decoded;
+			}
+			j++;
+		}
+		// Spit out 1 char.
+		if (j) result.push_back(accum);
+		if (j == 1) {
+			errorMessage = "Unexpected odd length of hex encoded string";
+		}
+	}
+	return result;
+}
+
+static unsigned tohex1(unsigned data)
+{
+	data &= 0xf;
+	return data <= 9 ? data + '0' : data + 'A' - 10;
+}
+
+
+// Decode character data to binary data as per encodingArg which may be "binary", "hex", "base64"
+// In the "binary" case, the data is just copied verbatim.
+// On return the errorMessage will have a non-zero size if an error occurred.
+string decodeToString(const char *buf, unsigned buflen, string encodingArg, string &errorMessage)
+{
+	stringCaseInsensitive encoding(encodingArg);
+	if (encoding == "binary") {
+		return string(buf,buflen);
+	} else if (encoding == "hex" || encoding == "base16") {
+		return hexDecodeToString((const unsigned char *)buf, buflen, errorMessage);
+	} else if (encoding == "base64") {
+		return base64DecodeToString((const unsigned char *)buf,buflen,errorMessage);
+	} else {
+		errorMessage = "Unexpected encoding specified:" + encodingArg;
+		return "";
+	}
+}
+
+// Encode binary data into a character string as per encodingArg which may be "binary", "hex", "base64".
+// In the "binary" case, the data is just copied verbatim.
+// On return the errorMessage will have a non-zero size if an error occurred.
+string encodeToString(const char *data, unsigned datalen, string encodingArg, string &errorMessage)
+{
+	stringCaseInsensitive encoding(encodingArg);
+	if (encoding == "binary") {
+		return string(data,datalen);
+	} else if (encoding == "hex" || encoding == "base16") {
+		string result;
+		result.reserve(datalen*2);
+		for (const char *dp = data; dp < &data[datalen]; dp++) {
+			result.push_back(tohex1((*dp >> 4) & 0xf));
+			result.push_back(tohex1(*dp & 0xf));
+		}
+		return result;
+	} else if (encoding == "base64") {
+		return base64EncodeToString((const unsigned char *)data,datalen);
+	} else {
+		errorMessage = "Unexpected encoding specified:" + encodingArg;
+		return "";
+	}
+}
+
+};	// namespace

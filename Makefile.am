@@ -21,8 +21,8 @@
 
 include $(top_srcdir)/Makefile.common
 
-AM_CPPFLAGS = $(STD_DEFINES_AND_INCLUDES)
-AM_CXXFLAGS = -Wall -O3 -g -ldl -lpthread -lsqlite3
+# AM_CPPFLAGS = $(STD_DEFINES_AND_INCLUDES)
+# AM_CXXFLAGS = -Wall -O3 -g -ldl -lpthread -lsqlite3
 
 EXTRA_DIST = \
 	example.config \
@@ -30,6 +30,7 @@ EXTRA_DIST = \
 
 noinst_LTLIBRARIES = libcommon.la
 
+libcommon_la_CXXFLAGS = $(AM_CXXFLAGS) -O3 -lsqlite3
 libcommon_la_SOURCES = \
 	Variables.cpp \
 	BitVector.cpp \
@@ -47,6 +48,7 @@ libcommon_la_SOURCES = \
 	Utils.cpp
 
 noinst_PROGRAMS = \
+	LockTest \
 	UtilsTest \
 	ThreadTest \
 	BitVectorTest \
@@ -130,6 +132,9 @@ F16Test_SOURCES = F16Test.cpp
 
 UtilsTest_SOURCES = UtilsTest.cpp
 UtilsTest_LDADD = libcommon.la
+
+LockTest_SOURCES = LockTest.cpp
+LockTest_LDADD = libcommon.la
 
 MOSTLYCLEANFILES += testSource testDestination
 

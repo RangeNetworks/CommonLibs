@@ -225,8 +225,8 @@ Log::~Log()
 		if (gLogToConsole) {
 			// The COUT() macro prevents messages from stomping each other but adds uninteresting thread numbers,
 			// so just use std::cout.
-			std::cout << mStream.str();
-			if (neednl) std::cout<<"\n";
+			std::cerr << mStream.str();
+			if (neednl) std::cerr<<"\n";
 		}
 		if (gLogToFile) {
 			fputs(mStream.str().c_str(),gLogToFile);
@@ -273,12 +273,10 @@ void gLogInitWithFile(const char* name, const char* level, int facility, char * 
 	if (gLogToFile==0 && LogFilePath != 0 && *LogFilePath != 0 && strlen(LogFilePath) > 0) {
 		gLogToFile = fopen(LogFilePath,"w"); // New log file each time we start.
 		if (gLogToFile) {
-			time_t now = time(NULL);
-                        std::string result;
-                        Timeval::isoTime(now, result);
-			fprintf(gLogToFile,"Starting at %s",result.c_str());
+			string when = Timeval::isoTime(time(NULL),true);
+			fprintf(gLogToFile,"Starting at %s\n",when.c_str());
 			fflush(gLogToFile);
-			std::cout << name <<" logging to file: " << LogFilePath << "\n";
+			std::cerr << name <<" logging to file: " << LogFilePath << "\n";
 		}
 	}
 
@@ -302,17 +300,15 @@ void gLogInit(const char* name, const char* level, int facility)
 	// Pat added, tired of the syslog facility.
 	// Both the transceiver and OpenBTS use this same Logger class, but only RMSC/OpenBTS/OpenNodeB may use this log file:
 	string str = gConfig.getStr("Log.File");
-	if (gLogToFile==0 && str.length() && (0==strncmp(gCmdName,"Open",4) || 0==strncmp(gCmdName,"RMSC",4))) {
+	if (gLogToFile==0 && str.length() && (0==strncmp(gCmdName,"Open",4) || 0==strncmp(gCmdName,"RMSC",4) || 0==strncmp(gCmdName,"RangeFinderGW",13))) {
 		const char *fn = str.c_str();
 		if (fn && *fn && strlen(fn)>3) {	// strlen because a garbage char is getting in sometimes.
 			gLogToFile = fopen(fn,"w"); // New log file each time we start.
 			if (gLogToFile) {
-                                time_t now = time(NULL);
-                                std::string result;
-                                Timeval::isoTime(now, result);
-                                fprintf(gLogToFile,"Starting at %s",result.c_str());
+				string when = Timeval::isoTime(time(NULL),true);
+				fprintf(gLogToFile,"Starting at %s\n",when.c_str());
 				fflush(gLogToFile);
-				std::cout << name <<" logging to file: " << fn << "\n";
+				std::cerr << name <<" logging to file: " << fn << "\n";
 			}
 		}
 	}

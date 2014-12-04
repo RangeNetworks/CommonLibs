@@ -27,6 +27,7 @@
 #ifndef THREADS_H
 #define THREADS_H
 
+#include <stdio.h>
 #include <pthread.h>
 #include <iostream>
 #include <assert.h>
@@ -69,6 +70,7 @@ void unlockCout();		///< call after writing cout
 //@{
 
 /** A class for recursive mutexes based on pthread_mutex. */
+// If at all possible, do not call lock/unlock from this class directly; use a ScopedLock instead.
 class Mutex {
 
 	private:
@@ -86,19 +88,17 @@ class Mutex {
 	//unused: bool anyDebugging() { for (int i = 0; i < maxLocks; i++) { if (mLockerFile[i]) return true; return false; } }
 
 	// pthread_mutex_trylock returns 0 and trylock returns true if the lock was acquired.
-	bool trylock();
-
 	public:
+	bool trylock(const char *file=0, unsigned line=0);
 
 	Mutex();
 
 	~Mutex();
 
 	void _lock() { pthread_mutex_lock(&mMutex); }
-	void lock();
 
 	// (pat) Like the above but report blocking; to see report you must set both Log.Level to DEBUG for both Threads.cpp and the file.
-	void lock(const char *file, unsigned line);
+	void lock(const char *file=0, unsigned line=0);
 
 	std::string mutext() const;
 
@@ -160,9 +160,11 @@ class ScopedPointer {
 };
 #endif
 
+// Class to acquire a Mutex lock and release it automatically when this goes out of scope.
+// ScopedLock should be used preferentially to Mutex::lock() and Mutex::unlock() in case a try-catch throw passes through
+// the containing procedure while the lock is held; ScopedLock releases the lock in that case.
+// "We dont use try-catch" you say?  Yes we do - C++ string and many standard containers use throw to handle unexpected arguments.
 class ScopedLock {
-
-	private:
 	Mutex& mMutex;
 
 	public:
@@ -170,7 +172,54 @@ class ScopedLock {
 	// Like the above but report blocking; to see report you must set both Log.Level to DEBUG for both Threads.cpp and the file.
 	ScopedLock(Mutex& wMutex,const char *file, unsigned line):mMutex(wMutex) { mMutex.lock(file,line); }
 	~ScopedLock() { mMutex.unlock(); }
+};
 
+// Lock multiple mutexes simultaneously.
+class ScopedLockMultiple {
+	Mutex garbage;	// Someplace to point mC if only two mutexes are specified.
+	Mutex *mA[3];
+	bool ownA[3];		// If set, expect mA to be locked by this thread on entry.
+	bool state[3];	// Current state, true if our thread has locked the associated Mutex; doesnt say if Mutex is locked by other threads.
+	const char *_file; unsigned _line;
+
+	void _lock(int which);
+	bool _trylock(int which);
+	void _unlock(int which);
+	void _saveState();
+	void _restoreState();
+	void _lockAll();
+	void _init(int wOwner, Mutex& wA, Mutex&wB, Mutex&wCa);
+
+	public:
+
+	// Do not return until all three mutexes are locked.
+	// On entry, the caller may optionally already have locked mutexes, as specified by the wOwner flag bits.
+	// If owner&1, caller owns wA, if owner&2 caller owns wB, if owner&4 caller owns wC.
+	// There wouldnt be much point of this class if the caller already owned all three mutexes.
+	// Note that the mutexes may be temporarily surrendered during this call as the methodology to avoid deadlock,
+	// but in that case all will be re-acquired before this returns.
+
+	ScopedLockMultiple(int wOwner, Mutex&wA, Mutex&wB, Mutex&wC) : _file(NULL), _line(0) {
+		_init(wOwner,wA,wB,wC);
+		_lockAll();
+	}
+	// Like the above but report blocking; to see report you must set both Log.Level to DEBUG for both Threads.cpp and the file.
+	// Use like this:  ScopedLockMultiple lock(bits,mutexa,mutexb,__FILE__,__LINE__);
+	ScopedLockMultiple(int wOwner, Mutex&wA, Mutex&wB, Mutex&wC, const char *wFile, int wLine) : _file(wFile), _line(wLine) {
+		_init(wOwner,wA,wB,wC);
+		_lockAll();
+	}
+
+	// Like the above but for two mutexes intead of three.
+	ScopedLockMultiple(int wOwner, Mutex& wA, Mutex&wB) : _file(NULL), _line(0) {
+		_init(wOwner,wA,wB,garbage);
+		_lockAll();
+	}
+	ScopedLockMultiple(int wOwner, Mutex&wA, Mutex&wB, const char *wFile, int wLine) : _file(wFile), _line(wLine) {
+		_init(wOwner,wA,wB,garbage);
+		_lockAll();
+	}
+	~ScopedLockMultiple() { _restoreState(); }
 };
 
 
@@ -225,6 +274,8 @@ class Thread {
 	
 
 	public:
+	// (pat) This is the type of the function argument to pthread_create.
+	typedef void *(*Task_t)(void*);
 
 	/** Create a thread in a non-running state. */
 	Thread(size_t wStackSize = (65536*4)):mThread((pthread_t)0) {
@@ -241,8 +292,8 @@ class Thread {
 
 
 	/** Start the thread on a task. */
-	void start(void *(*task)(void*), void *arg);
-	void start2(void *(*task)(void*), void *arg, int stacksize);
+	void start(Task_t task, void *arg);
+	void start2(Task_t task, void *arg, int stacksize);
 
 	/** Join a thread that will stop on its own. */
 	void join() { int s = pthread_join(mThread,NULL); assert(!s); mThread = 0; }

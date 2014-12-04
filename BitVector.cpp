@@ -375,6 +375,22 @@ void BitVector::pack(unsigned char* targ) const
 	targ[bytes] = peekField(whole,rem) << (8-rem);
 }
 
+string BitVector::packToString() const
+{
+	string result;
+	result.reserve((size()+7)/8);
+	// Tempting to call this->pack(result.c_str()) but technically c_str() is read-only.
+	unsigned bytes = size()/8;
+	for (unsigned i=0; i<bytes; i++) {
+		result.push_back(peekField(i*8,8));
+	}
+	unsigned whole = bytes*8;
+	unsigned rem = size() - whole;
+	if (rem==0) return result;
+	result.push_back(peekField(whole,rem) << (8-rem));
+	return result;
+}
+
 
 void BitVector::unpack(const unsigned char* src)
 {

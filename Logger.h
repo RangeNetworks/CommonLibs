@@ -111,6 +111,7 @@ extern pid_t gPid;
 // The WATCHINFO macro prints an INFO level message that is also printed to the console if the log level is DEBUG.
 // Beware that the arguments are evaluated multiple times.
 #define WATCHF(...)  { LOG(DEBUG)<<format(__VA_ARGS__); if (IS_WATCH_LEVEL(DEBUG)) {printf("%s ",timestr(7).c_str()); printf(__VA_ARGS__);} }
+#define WATCHLEVEL(level,...) if (IS_WATCH_LEVEL(level)) {std::cout << timestr(7)<<" "<<__VA_ARGS__ << std::endl;}
 #define WATCH(...) { LOG(DEBUG)<<__VA_ARGS__; if (IS_WATCH_LEVEL(DEBUG)) {std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl;} }
 #define WATCHINFO(...) { LOG(INFO)<<__VA_ARGS__; if (IS_WATCH_LEVEL(INFO)) {std::cout << timestr(7)<<" "<<__VA_ARGS__ << endl;} }
 

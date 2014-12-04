@@ -676,6 +676,8 @@ const ConfigurationRecord& ConfigurationTable::lookup(const string& key)
 	sqlite3_single_lookup(mDB,"CONFIG",
 			"KEYSTRING",key.c_str(),"VALUESTRING",value);
 
+	// (pat 9-2014) If sqlite3_single_lookup returns false, the behavior below is incorrect.
+
 	// value found, cache the result
 	if (value) {
 		mCache[key] = ConfigurationRecord(key,value);
@@ -688,7 +690,7 @@ const ConfigurationRecord& ConfigurationTable::lookup(const string& key)
 		throw ConfigurationTableKeyNotFound(key);
 	}
 
-	free(value);
+	if (value) free(value);
 
 	// Leave mLock locked.  The caller holds it still.
 	return mCache[key];

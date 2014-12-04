@@ -48,6 +48,6 @@ int main(int argc, char *argv[])
         std::string sLocal("");
         std::string sGMT("");
         Timeval::isoTime(t, sLocal, true);
-        Timeval::isoTime(t, sGMT);
+        Timeval::isoTime(t, sGMT, false);
         cout << "Localtime: " << sLocal << ", GMT: " << sGMT << std::endl;
 }
