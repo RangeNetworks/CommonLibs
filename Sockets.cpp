@@ -199,21 +199,25 @@ int DatagramSocket::send(const struct sockaddr* dest, const char * message)
 	return send(dest,message,length);
 }
 
-int DatagramSocket::read(char* buffer, size_t length)
-{
-	socklen_t addr_len = sizeof(mSource);
-	int rd_length = recvfrom(mSocketFD, (void *) buffer, length, 0,
-		(struct sockaddr*) &mSource, &addr_len);
 
-	if ((rd_length==-1) && (errno!=EAGAIN)) {
+
+
+
+int DatagramSocket::read(char* buffer)
+{
+	socklen_t temp_len = sizeof(mSource);
+	int length = recvfrom(mSocketFD, (void*)buffer, MAX_UDP_LENGTH, 0,
+	    (struct sockaddr*)&mSource,&temp_len);
+	if ((length==-1) && (errno!=EAGAIN)) {
 		perror("DatagramSocket::read() failed");
 		devassert(0);
 		throw SocketError();
 	}
-	return rd_length;
+	return length;
 }
 
-int DatagramSocket::read(char* buffer, size_t length, unsigned timeout)
+
+int DatagramSocket::read(char* buffer, unsigned timeout)
 {
 	fd_set fds;
 	FD_ZERO(&fds);
@@ -228,7 +232,7 @@ int DatagramSocket::read(char* buffer, size_t length, unsigned timeout)
 		throw SocketError();
 	}
 	if (sel==0) return -1;
-	if (FD_ISSET(mSocketFD,&fds)) return read(buffer, length);
+	if (FD_ISSET(mSocketFD,&fds)) return read(buffer);
 	return -1;
 }
 

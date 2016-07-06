@@ -45,7 +45,7 @@ void *testReaderIP(void *)
 	int rc = 0;
 	while (rc<gNumToSend) {
 		char buf[MAX_UDP_LENGTH];
-		int count = readSocket.read(buf, MAX_UDP_LENGTH);
+		int count = readSocket.read(buf);
 		if (count>0) {
 			COUT("read: " << buf);
 			rc++;
@@ -65,7 +65,7 @@ void *testReaderUnix(void *)
 	int rc = 0;
 	while (rc<gNumToSend) {
 		char buf[MAX_UDP_LENGTH];
-		int count = readSocket.read(buf, MAX_UDP_LENGTH);
+		int count = readSocket.read(buf);
 		if (count>0) {
 			COUT("read: " << buf);
 			rc++;
