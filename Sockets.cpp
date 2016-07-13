@@ -284,7 +284,7 @@ void UDPSocket::open(unsigned short localPort)
 	size_t length = sizeof(address);
 	bzero(&address,length);
 	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(localPort);
 	if (bind(mSocketFD,(struct sockaddr*)&address,length)<0) {
 		char buf[100];
