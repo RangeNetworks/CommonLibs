@@ -48,14 +48,15 @@
 // If timestr decl is changed G++ will whine when Utils.h is included.
 namespace Utils { const std::string timestr(); };
 
-#if !defined(gettid)
-# define gettid() syscall(SYS_gettid)
-#endif // !defined(gettid)
+#if !defined(gettid2)
+# define gettid2() syscall(SYS_gettid)
+#endif // !defined(gettid2)
 
 extern pid_t gPid;
 #define _LOG(level) \
-	Log(LOG_##level).get() <<gPid <<":"<<gettid() \
-	<< Utils::timestr(100,true) << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
+        Log(LOG_##level).get() <<gPid <<":"<<gettid2() \
+        << Utils::timestr(100,true) << " " __FILE__  ":"  << __LINE__ << ":" << __FUNCTION__ << ": "
+
 
 // (pat) If you '#define LOG_GROUP groupname' before including Logger.h, then you can set Log.Level.groupname as well as Log.Level.filename.
 #ifdef LOG_GROUP
